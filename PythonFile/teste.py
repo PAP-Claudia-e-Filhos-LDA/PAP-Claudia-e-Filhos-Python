@@ -13,7 +13,9 @@ from tkinter import ttk
 '''Notas:
 #FD9C3A -> Laranja 
 #17191F -> Cinzento Escuro
-#2E3133 -> Cinzento Claro'''
+#2E3133 -> Cinzento Claro
+
+#TENTAR FAZER FUNÇÃO QUE ORDENE OS ITENS DA TREEVIEW'''
 class Funcs:
     def conecta_bd(self):  # faz conexao á base de dados
         self.conn = sqlite3.connect("../BD/Rissois.db")
@@ -43,21 +45,11 @@ class Funcs:
     def lista_produtos(self):#faz o select que vai mostrar os produtos e as suas informações
         self.produtos_lista.delete(*self.produtos_lista.get_children())
         self.conecta_bd()
-        lista = self.cursor.execute("select id_produto, nome_produto, preco from Produtos order by id_produto")
+        lista = self.cursor.execute("select * from Produtos order by id_produto")
         for i in lista:
             self.produtos_lista.insert("", "end", values=i)
             self.produtos_lista.update()
         self.desconecta_bd()
-
-    def ordenarProdutos_Id(self):
-        self.produtos_lista.delete(*self.produtos_lista.get_children())
-        self.conecta_bd()
-        lista = self.cursor.execute("Select * from Produtos Order by id_produto DESC")
-        for i in lista:
-            self.produtos_lista.insert("", "end", values=i)
-            self.produtos_lista.update()
-        self.desconecta_bd()
-
 class Dashboard(Funcs):
     def __init__(self, window):
 
@@ -263,38 +255,38 @@ class Dashboard(Funcs):
 
         ## Frame 1 da listagem de Produtos
         self.bodyFrame1_Produtos = Frame(self.frameProdutos, bg="#2E3133")
-        self.bodyFrame1_Produtos.place(x=28, y=90, width=310, height=650)
+        self.bodyFrame1_Produtos.place(x=28, y=90, width=660, height=650)
 
         ### Treeview que mostra todos os Produtos na base de dados
-        self.produtos_lista =tkinter.ttk.Treeview(self.bodyFrame1_Produtos, columns=("col1", "col2", "col3",))
+        self.produtos_lista =tkinter.ttk.Treeview(self.bodyFrame1_Produtos, columns=("col1", "col2", "col3","col4","col5"))
         self.produtos_lista.heading("#0", text="")
-        self.produtos_lista.heading("#1", text="Produto", anchor='w',command=lambda: self.ordenarProdutos_Id())
+        self.produtos_lista.heading("#1", text="Produto", anchor='w')
         self.produtos_lista.heading("#2", text="Nome", anchor='w')
         self.produtos_lista.heading("#3", text="Preço", anchor='w')
-        self.produtos_lista.column("#0", width=1, stretch=NO)
+        self.produtos_lista.heading("#4", text="Descrição", anchor='w')
+        self.produtos_lista.heading("#5", text="Imagem", anchor='w')
+        self.produtos_lista.column("#0", width=5, stretch=NO)
         self.produtos_lista.column("#1", width=100, stretch=NO)
         self.produtos_lista.column("#2", width=130, stretch=NO)
         self.produtos_lista.column("#3", width=76, stretch=NO)
+        self.produtos_lista.column("#4", width=150, stretch=NO)
+        self.produtos_lista.column("#5", width=195, stretch=NO)
         self.produtos_lista.place(relx=-0.009, rely=0, relwidth=1.001, relheight=1.05)
 
         ### Sroll Bar
         self.sroll = Scrollbar(self.bodyFrame1_Produtos, orient="vertical")
         self.sroll.configure(command=self.produtos_lista.yview)
         self.produtos_lista.configure(yscroll=self.sroll.set)
-        self.sroll.place(relx=0.937, rely=0.04, relwidth=0.051, relheight=0.96)
+        self.sroll.place(relx=0.94, rely=0.04, relwidth=0.051, relheight=0.96)
         self.lista_produtos()
 
         ### Decorar a Treeview
         style = ttk.Style()
         style.theme_use('clam')
         style.map('Treeview',background=[('selected', '#FD9C3A'), ('!selected', '#2E3133')],foreground=[('selected', 'black'), ('!selected', 'white')],)
-        style.map('Treeview.Heading',foreground=[('selected', 'black')])
-        style.configure('Treeview.Heading', background="#FD9C3A")
+        style.map('Treeview.Heading',foreground=[('selected', 'white')])
+        style.configure('Treeview.Heading', background="white")
         style.configure('Treeview',rowheight=35)
-
-        ## Frame 2 Adicionar Produtos
-        self.bodyFrame2_Produtos = Frame(self.frameProdutos, bg="#2E3133")
-        self.bodyFrame2_Produtos.place(x=380, y=90, width=310, height=650)
 
 
         ## Frame 3 (Quantidade de Produtos)
@@ -325,23 +317,6 @@ class Dashboard(Funcs):
         ## Frame 4 Grafico redondo
         self.bodyFrame4_Produtos = Frame(self.frameProdutos, bg="#2E3133")
         self.bodyFrame4_Produtos.place(x=730, y=310, width=310 , height=430)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         self.frameInicio.lift()
 def win():
