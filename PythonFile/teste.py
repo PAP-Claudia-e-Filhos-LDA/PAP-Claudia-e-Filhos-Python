@@ -50,6 +50,27 @@ class Funcs:
             self.produtos_lista.insert("", "end", values=i)
             self.produtos_lista.update()
         self.desconecta_bd()
+
+    def on_double_click(self, event):
+        item = self.produtos_lista.selection()[0]  # Get the selected item
+        values = self.produtos_lista.item(item, "values")  # Get values of the selected item
+
+        # Update the entry widgets with the values from the selected item
+        self.Textbox_Produtos.delete(0, tk.END)
+        self.Textbox_Produtos.insert(0, values[1])  # Assuming "Produto" is in the second column
+        self.Textbox_Preco.delete(0, tk.END)
+        self.Textbox_Preco.insert(0, values[2])  # Assuming "Preço" is in the third column
+        self.TextBox_Descrição.delete(1.0, tk.END)
+        self.TextBox_Descrição.insert(tk.END, values[3])  # Assuming "Descrição" is in the fourth column
+        caminho = values[4]
+        try:
+            ImagemProduto = ImageTk.PhotoImage(Image.open(caminho).resize((150,100)))
+            self.logo = Label(self.bodyFrame4_Produtos, image=ImagemProduto, bg='#2E3133',bd=1)
+            self.logo.image = ImagemProduto
+            self.logo.place(x=79, y=240)
+        except FileNotFoundError:
+            print("Erro:'Imagem não Encontrada'")
+            self.logo.destroy()
 class Dashboard(Funcs):
     def __init__(self, window):
 
@@ -272,6 +293,7 @@ class Dashboard(Funcs):
         self.produtos_lista.column("#4", width=150, stretch=NO)
         self.produtos_lista.column("#5", width=195, stretch=NO)
         self.produtos_lista.place(relx=-0.009, rely=0, relwidth=1.001, relheight=1.05)
+        self.produtos_lista.bind("<Double-1>", self.on_double_click)
 
         ### Sroll Bar
         self.sroll = Scrollbar(self.bodyFrame1_Produtos, orient="vertical")
@@ -352,15 +374,18 @@ class Dashboard(Funcs):
 
         ### Produto
         self.LabelImagem= Label(self.bodyFrame4_Produtos,text="Imagem ", font=("", 10, "bold"), fg='white', bg='#2E3133')
-        self.LabelImagem.place(x=15,y=237)
+        self.LabelImagem.place(x=15,y=240)
         self.LabelImagemPontos = Label(self.bodyFrame4_Produtos,text=": ", font=("", 10, "bold"), fg='#FD9C3A', bg='#2E3133')
-        self.LabelImagemPontos.place(x=70,y=237)
+        self.LabelImagemPontos.place(x=70,y=240)
 
-        ImagemProduto = ImageTk.PhotoImage(Image.open('../imagens/shopping-cart.png'))
-        self.logo = Label(self.bodyFrame4_Produtos, image=ImagemProduto, bg='#2E3133',bd=1)
-        self.logo.image = ImagemProduto
-        self.logo.place(x=72, y=237)
-
+        ### Try que serve para abrir o programa sem imagem, e quando tiver imagem vai aparecer acho(?)
+        try:
+            ImagemProduto = ImageTk.PhotoImage(Image.open('../imagens/image.png').resize((150,100)))
+            self.logo = Label(self.bodyFrame4_Produtos, image=ImagemProduto, bg='#2E3133',bd=1)
+            self.logo.image = ImagemProduto
+            self.logo.place(x=79, y=240)
+        except FileNotFoundError:
+            print("Erro:'Imagem não Encontrada'")
         self.frameInicio.lift()
 def win():
     window = Tk()
