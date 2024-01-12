@@ -8,7 +8,7 @@ import sqlite3
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk,Text, WORD, END, INSERT
 
 '''Notas:
 #FD9C3A -> Laranja 
@@ -285,11 +285,11 @@ class Dashboard(Funcs):
         style.theme_use('clam')
         style.map('Treeview',background=[('selected', '#FD9C3A'), ('!selected', '#2E3133')],foreground=[('selected', 'black'), ('!selected', 'white')],)
         style.map('Treeview.Heading',foreground=[('selected', 'white')])
-        style.configure('Treeview.Heading', background="white")
+        style.configure('Treeview.Heading', background="#FD9C3A")
         style.configure('Treeview',rowheight=35)
 
 
-        ## Frame 3 (Quantidade de Produtos)
+        ## Frame 2 (Quantidade de Produtos)
         self.bodyFrame3_Produtos = Frame(self.frameProdutos, bg="#2E3133")
         self.bodyFrame3_Produtos.place(x=730, y=90, width=310, height=175)
 
@@ -312,11 +312,54 @@ class Dashboard(Funcs):
         self.N_produtosFrame3_Produtos = Label(self.bodyFrame3_Produtos, bg="#2E3133", text=str(numProdutos),font=("", 50, "bold"), fg='white')
         self.N_produtosFrame3_Produtos.place(x=115, y=70)
 
-
-
-        ## Frame 4 Grafico redondo
+        ## Frame 3 Grafico redondo
         self.bodyFrame4_Produtos = Frame(self.frameProdutos, bg="#2E3133")
         self.bodyFrame4_Produtos.place(x=730, y=310, width=310 , height=430)
+
+        ### Label a dizer Alterar Produtos
+        self.LabelAlterarProduto = Label(self.bodyFrame4_Produtos, bg="#2E3133", text="Alteral Produtos", font=("", 15, "bold"),fg='white')
+        self.LabelAlterarProduto.place(x=70, y=25)
+
+        ### Linha
+        self.lineFrame4_Produtos = Label(self.bodyFrame4_Produtos, text="______________________",font=("", 10, "bold"), fg='#FD9C3A', bg='#2E3133')
+        self.lineFrame4_Produtos.place(x=70, y=0)
+
+        ### Nome do Produto
+        self.nomeProduto = Label(self.bodyFrame4_Produtos, text="Nome do Produto ", font=("", 10, "bold"), fg='white', bg='#2E3133')
+        self.nomeProduto.place(x=15, y=75)
+        self.labelProduto = Label(self.bodyFrame4_Produtos, text=": ", font=("", 10, "bold"), fg='#FD9C3A', bg='#2E3133')
+        self.labelProduto.place(x=130, y=75)
+        self.Textbox_Produtos = Entry(self.bodyFrame4_Produtos,bg='#2E3133',fg='white')
+        self.Textbox_Produtos.place(x=140, y=75,width=100 , height=25)
+
+        ### Preço
+        self.Preço_Produto = Label(self.bodyFrame4_Produtos, text="Preço ", font=("", 10, "bold"), fg='white', bg='#2E3133')
+        self.Preço_Produto.place(x=15, y=105)
+        self.LabelPreço = Label(self.bodyFrame4_Produtos, text=": ", font=("", 10, "bold"), fg='#FD9C3A', bg='#2E3133')
+        self.LabelPreço.place(x=57, y=105)
+        self.Textbox_Preco = Entry(self.bodyFrame4_Produtos,bg='#2E3133',fg='white')
+        self.Textbox_Preco.place(x=70, y=105,width=45 , height=25)
+        self.LabelEuro = Label(self.bodyFrame4_Produtos, text="€ ", font=("", 10, "bold"), fg='#FD9C3A', bg='#2E3133')
+        self.LabelEuro.place(x=117,y=105)
+
+        ###Descrição
+        self.LabelDescrição = Label(self.bodyFrame4_Produtos, text="Descrição ", font=("", 10, "bold"), fg='white', bg='#2E3133')
+        self.LabelDescrição.place(x=15,y=137)
+        self.LabelDescriçãoPontos = Label(self.bodyFrame4_Produtos, text=": ", font=("", 10, "bold"), fg='#FD9C3A', bg='#2E3133')
+        self.LabelDescriçãoPontos.place(x=80,y=137)
+        self.TextBox_Descrição = Text(self.bodyFrame4_Produtos, bg='#2E3133', fg='white')
+        self.TextBox_Descrição.place(x=90, y=135, width=150, height=100)
+
+        ### Produto
+        self.LabelImagem= Label(self.bodyFrame4_Produtos,text="Imagem ", font=("", 10, "bold"), fg='white', bg='#2E3133')
+        self.LabelImagem.place(x=15,y=237)
+        self.LabelImagemPontos = Label(self.bodyFrame4_Produtos,text=": ", font=("", 10, "bold"), fg='#FD9C3A', bg='#2E3133')
+        self.LabelImagemPontos.place(x=70,y=237)
+
+        ImagemProduto = ImageTk.PhotoImage(Image.open('../imagens/shopping-cart.png'))
+        self.logo = Label(self.bodyFrame4_Produtos, image=ImagemProduto, bg='#2E3133',bd=1)
+        self.logo.image = ImagemProduto
+        self.logo.place(x=72, y=237)
 
         self.frameInicio.lift()
 def win():
