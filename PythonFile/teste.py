@@ -8,7 +8,9 @@ import sqlite3
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import tkinter as tk
-from tkinter import ttk,Text, WORD, END, INSERT
+from tkinter import ttk,Text, WORD, END, INSERT,filedialog
+import os
+
 
 '''Notas:
 #FD9C3A -> Laranja 
@@ -52,25 +54,54 @@ class Funcs:
         self.desconecta_bd()
 
     def on_double_click(self, event):
-        item = self.produtos_lista.selection()[0]  # Get the selected item
-        values = self.produtos_lista.item(item, "values")  # Get values of the selected item
+        item = self.produtos_lista.selection()[0]
+        values = self.produtos_lista.item(item, "values")
 
-        # Update the entry widgets with the values from the selected item
         self.Textbox_Produtos.delete(0, tk.END)
-        self.Textbox_Produtos.insert(0, values[1])  # Assuming "Produto" is in the second column
+        self.Textbox_Produtos.insert(0, values[1])
         self.Textbox_Preco.delete(0, tk.END)
-        self.Textbox_Preco.insert(0, values[2])  # Assuming "Preço" is in the third column
+        self.Textbox_Preco.insert(0, values[2])
         self.TextBox_Descrição.delete(1.0, tk.END)
-        self.TextBox_Descrição.insert(tk.END, values[3])  # Assuming "Descrição" is in the fourth column
+        self.TextBox_Descrição.insert(tk.END, values[3])
+
         caminho = values[4]
         try:
-            ImagemProduto = ImageTk.PhotoImage(Image.open(caminho).resize((150,100)))
-            self.logo = Label(self.bodyFrame4_Produtos, image=ImagemProduto, bg='#2E3133',bd=1)
+            ImagemProduto = ImageTk.PhotoImage(Image.open(caminho).resize((250, 135)))
+            self.logo = Label(self.bodyFrame4_Produtos, image=ImagemProduto, bg='#2E3133', bd=1)
             self.logo.image = ImagemProduto
-            self.logo.place(x=79, y=240)
+            self.logo.place(x=15, y=275)
+            if hasattr(self,'nova_imagem'):
+                self.nova_imagem.destroy()
         except FileNotFoundError:
-            print("Erro:'Imagem não Encontrada'")
-            self.logo.destroy()
+            if hasattr(self, 'logo'):
+                self.logo.destroy()
+            print("Erro: Imagem não Encontrada")
+            self.nova_imagem = Button(self.bodyFrame4_Produtos, text="Adicione uma imagem", command=self.inserir_imagem)
+            self.nova_imagem.place(x=79, y=240)
+            if hasattr(self, 'logo'):
+                self.logo.destroy()
+
+    def inserir_imagem(self):
+        item = self.produtos_lista.selection()[0]
+        values = self.produtos_lista.item(item, "values")
+
+        caminho_nova_imagem = filedialog.askopenfilename(initialdir="/", title="Selecione uma imagem", filetypes=(
+        ("Arquivos de Imagem", "*.png;*.jpg;*.jpeg;*.gif"), ("Todos os arquivos", "*.*")))
+        if caminho_nova_imagem:
+            imagem = Image.open(caminho_nova_imagem)
+            imagem = imagem.resize((256, 99))
+            diretorio_destino = "../imagens/"
+            nome_arquivo_destino = f"imagem_produto_{values[0]}.png"
+            caminho_destino = os.path.join(diretorio_destino, nome_arquivo_destino)
+            imagem.save(caminho_destino)
+            imagem_tk = ImageTk.PhotoImage(imagem)
+            if hasattr(self, 'logo'):
+                self.logo.destroy()
+            self.logo = Label(self.bodyFrame4_Produtos, image=imagem_tk, bg='#2E3133', bd=1)
+            self.logo.image = imagem_tk
+            self.logo.place(x=15, y=250)
+
+
 class Dashboard(Funcs):
     def __init__(self, window):
 
@@ -380,10 +411,10 @@ class Dashboard(Funcs):
 
         ### Try que serve para abrir o programa sem imagem, e quando tiver imagem vai aparecer acho(?)
         try:
-            ImagemProduto = ImageTk.PhotoImage(Image.open('../imagens/image.png').resize((150,100)))
+            ImagemProduto = ImageTk.PhotoImage(Image.open('../imagens/image.png').resize((256, 99)))
             self.logo = Label(self.bodyFrame4_Produtos, image=ImagemProduto, bg='#2E3133',bd=1)
             self.logo.image = ImagemProduto
-            self.logo.place(x=79, y=240)
+            self.logo.place(x=15, y=250)
         except FileNotFoundError:
             print("Erro:'Imagem não Encontrada'")
         self.frameInicio.lift()
