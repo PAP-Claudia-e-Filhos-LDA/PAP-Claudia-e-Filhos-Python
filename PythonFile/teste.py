@@ -8,7 +8,7 @@ import sqlite3
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import tkinter as tk
-from tkinter import ttk,Text, WORD, END, INSERT,filedialog
+from tkinter import ttk,Text, WORD, END, INSERT,filedialog,simpledialog,messagebox
 import os
 
 
@@ -79,15 +79,26 @@ class Funcs:
             print("Erro: Imagem não Encontrada")
             self.nova_imagem = Button(self.bodyFrame4_Produtos, text="Adicione uma imagem", command=self.inserir_imagem ,bg='#2E3133', font=("", 10, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=20)
             self.nova_imagem.place(x=79, y=240)
-    def inserir_imagem(self):
+    def on_right_click(self, event):# função que quando se da um click com o butao direito na Treeview ela pergunta se quer apagar
+        item = self.produtos_lista.selection()[0] if self.produtos_lista.selection() else None
+        if item:
+            resposta = messagebox.askyesno("Confirmação", "Queres mesmo apagar isso?")
+            if resposta:
+                self.Textbox_Produtos.delete(0, END)
+                self.Textbox_Preco.delete(0, END)
+                self.TextBox_Descrição.delete(1.0, END)
+                self.logo.destroy()
+
+    def inserir_imagem(self):#guarda as imagens que foram uploadadas numa pasta com um nome especifico para serem tratadas pela,base de dados
         try:
             item = self.produtos_lista.selection()[0]
             values = self.produtos_lista.item(item, "values")
+            item = item[3:]
         except IndexError:
-            num_produtos = self.contar_Produtos() +1
+            num_produtos = self.contar_Produtos() + 1
             item = num_produtos
         caminho_nova_imagem = filedialog.askopenfilename(initialdir="/", title="Selecione uma imagem", filetypes=(
-        ("Arquivos de Imagem", "*.png;*.jpg;*.jpeg;*.gif"), ("Todos os arquivos", "*.*")))
+            ("Arquivos de Imagem", "*.png;*.jpg;*.jpeg;*.gif"), ("Todos os arquivos", "*.*")))
         if caminho_nova_imagem:
             imagem = Image.open(caminho_nova_imagem)
             imagem = imagem.resize((250, 135))
@@ -96,14 +107,12 @@ class Funcs:
             caminho_destino = os.path.join(diretorio_destino, nome_arquivo_destino)
             imagem.save(caminho_destino)
             imagem_produto = ImageTk.PhotoImage(imagem)
-            if hasattr(self, 'logo') and hasattr(self,'nova_imagem'):
+            if hasattr(self, 'logo') and hasattr(self, 'nova_imagem'):
                 self.nova_imagem.destroy()
                 self.logo.destroy()
             self.logo = Label(self.bodyFrame4_Produtos, image=imagem_produto, bg='#2E3133', bd=1)
             self.logo.image = imagem_produto
             self.logo.place(x=15, y=275)
-
-
 class Dashboard(Funcs):
     def __init__(self, window):
         # janela principal
@@ -325,7 +334,7 @@ class Dashboard(Funcs):
         self.produtos_lista.column("#5", width=195, stretch=NO)
         self.produtos_lista.place(relx=-0.009, rely=0, relwidth=1.001, relheight=1.05)
         self.produtos_lista.bind("<Double-1>", self.on_double_click)
-
+        self.produtos_lista.bind("<Button-3>", self.on_right_click)
         ### Sroll Bar
         self.sroll = Scrollbar(self.bodyFrame1_Produtos, orient="vertical")
         self.sroll.configure(command=self.produtos_lista.yview)
@@ -426,4 +435,4 @@ def win():
     window.mainloop()
 
 if __name__ == "__main__":
-    win()
+    win()   
