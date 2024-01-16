@@ -52,7 +52,6 @@ class Funcs:
             self.produtos_lista.insert("", "end", values=i)
             self.produtos_lista.update()
         self.desconecta_bd()
-
     def on_double_click(self, event):
         item = self.produtos_lista.selection()[0]
         values = self.produtos_lista.item(item, "values")
@@ -66,45 +65,47 @@ class Funcs:
 
         caminho = values[4]
         try:
+            if hasattr(self, 'logo') and hasattr(self,'nova_imagem'):
+                self.nova_imagem.destroy()
+                self.logo.destroy()
             ImagemProduto = ImageTk.PhotoImage(Image.open(caminho).resize((250, 135)))
             self.logo = Label(self.bodyFrame4_Produtos, image=ImagemProduto, bg='#2E3133', bd=1)
             self.logo.image = ImagemProduto
             self.logo.place(x=15, y=275)
-            if hasattr(self,'nova_imagem'):
-                self.nova_imagem.destroy()
         except FileNotFoundError:
-            if hasattr(self, 'logo'):
+            if hasattr(self, 'logo') and hasattr(self,'nova_imagem'):
+                self.nova_imagem.destroy()
                 self.logo.destroy()
             print("Erro: Imagem não Encontrada")
-            self.nova_imagem = Button(self.bodyFrame4_Produtos, text="Adicione uma imagem", command=self.inserir_imagem)
+            self.nova_imagem = Button(self.bodyFrame4_Produtos, text="Adicione uma imagem", command=self.inserir_imagem ,bg='#2E3133', font=("", 10, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=20)
             self.nova_imagem.place(x=79, y=240)
-            if hasattr(self, 'logo'):
-                self.logo.destroy()
-
     def inserir_imagem(self):
-        item = self.produtos_lista.selection()[0]
-        values = self.produtos_lista.item(item, "values")
-
+        try:
+            item = self.produtos_lista.selection()[0]
+            values = self.produtos_lista.item(item, "values")
+        except IndexError:
+            num_produtos = self.contar_Produtos() +1
+            item = num_produtos
         caminho_nova_imagem = filedialog.askopenfilename(initialdir="/", title="Selecione uma imagem", filetypes=(
         ("Arquivos de Imagem", "*.png;*.jpg;*.jpeg;*.gif"), ("Todos os arquivos", "*.*")))
         if caminho_nova_imagem:
             imagem = Image.open(caminho_nova_imagem)
-            imagem = imagem.resize((256, 99))
+            imagem = imagem.resize((250, 135))
             diretorio_destino = "../imagens/"
-            nome_arquivo_destino = f"imagem_produto_{values[0]}.png"
+            nome_arquivo_destino = f"imagem_produto_{item}.png"
             caminho_destino = os.path.join(diretorio_destino, nome_arquivo_destino)
             imagem.save(caminho_destino)
-            imagem_tk = ImageTk.PhotoImage(imagem)
-            if hasattr(self, 'logo'):
+            imagem_produto = ImageTk.PhotoImage(imagem)
+            if hasattr(self, 'logo') and hasattr(self,'nova_imagem'):
+                self.nova_imagem.destroy()
                 self.logo.destroy()
-            self.logo = Label(self.bodyFrame4_Produtos, image=imagem_tk, bg='#2E3133', bd=1)
-            self.logo.image = imagem_tk
-            self.logo.place(x=15, y=250)
+            self.logo = Label(self.bodyFrame4_Produtos, image=imagem_produto, bg='#2E3133', bd=1)
+            self.logo.image = imagem_produto
+            self.logo.place(x=15, y=275)
 
 
 class Dashboard(Funcs):
     def __init__(self, window):
-
         # janela principal
         self.window = window
         self.window.title("Rissois")
@@ -156,8 +157,7 @@ class Dashboard(Funcs):
         self.manager_text.place(x=160, y=375)
 
         ## Lucro
-        self.settings_text = Button(self.sidebar, text='Lucro', bg='#2E3133', font=("", 12, "bold"), fg='white',
-                                    cursor='hand2', activebackground='#FD9C3A', bd=5, width=10)
+        self.settings_text = Button(self.sidebar, text='Lucro', bg='#2E3133', font=("", 12, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=10)
         self.settings_text.place(x=30, y=425)
 
         ## Sair
@@ -344,7 +344,7 @@ class Dashboard(Funcs):
 
         ## Frame 2 (Quantidade de Produtos)
         self.bodyFrame3_Produtos = Frame(self.frameProdutos, bg="#2E3133")
-        self.bodyFrame3_Produtos.place(x=730, y=90, width=310, height=175)
+        self.bodyFrame3_Produtos.place(x=730, y=90, width=310, height=150)
 
         ### Label a dizer Produtos
         self.labelFrame3_Produtos = Label(self.bodyFrame3_Produtos, bg="#2E3133", text="Total de Produtos:", font=("", 15, "bold"),fg='white')
@@ -363,11 +363,11 @@ class Dashboard(Funcs):
         ###Numero de Produtos
         numProdutos = self.contar_Produtos()
         self.N_produtosFrame3_Produtos = Label(self.bodyFrame3_Produtos, bg="#2E3133", text=str(numProdutos),font=("", 50, "bold"), fg='white')
-        self.N_produtosFrame3_Produtos.place(x=115, y=70)
+        self.N_produtosFrame3_Produtos.place(x=115, y=65)
 
-        ## Frame 3 Grafico redondo
+        ## Frame 4 (Adicionar Produto)
         self.bodyFrame4_Produtos = Frame(self.frameProdutos, bg="#2E3133")
-        self.bodyFrame4_Produtos.place(x=730, y=310, width=310 , height=430)
+        self.bodyFrame4_Produtos.place(x=730, y=285, width=310 , height=455)
 
         ### Label a dizer Alterar Produtos
         self.LabelAlterarProduto = Label(self.bodyFrame4_Produtos, bg="#2E3133", text="Alteral Produtos", font=("", 15, "bold"),fg='white')
@@ -417,6 +417,8 @@ class Dashboard(Funcs):
             self.logo.place(x=15, y=250)
         except FileNotFoundError:
             print("Erro:'Imagem não Encontrada'")
+            self.nova_imagem = Button(self.bodyFrame4_Produtos, text="Adicione uma imagem", command=lambda : self.inserir_imagem() ,bg='#2E3133', font=("", 10, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=20)
+            self.nova_imagem.place(x=79, y=240)
         self.frameInicio.lift()
 def win():
     window = Tk()
