@@ -23,6 +23,7 @@ class Funcs:
         self.conn = sqlite3.connect("../BD/Rissois.db")
         self.cursor = self.conn.cursor()
     def desconecta_bd(self):  # desliga a conexao á base de dados
+        self.conn.commit()
         self.conn.close()
     def contar_clientes(self):  # função pra contar o numero de clientes
         self.conecta_bd()
@@ -47,12 +48,12 @@ class Funcs:
     def lista_produtos(self):#faz o select que vai mostrar os produtos e as suas informações
         self.produtos_lista.delete(*self.produtos_lista.get_children())
         self.conecta_bd()
-        lista = self.cursor.execute("select * from Produtos order by id_produto")
+        lista = self.cursor.execute("SELECT id_produto, nome_produto, preco, `desc`, CASE WHEN caminho_imagem IS NULL THEN 'Não tem' ELSE 'Tem' END AS status_imagem, CASE WHEN ativo = 1 THEN 'Sim' ELSE 'Não' END AS status_ativo FROM Produtos ORDER BY id_produto;")
         for i in lista:
             self.produtos_lista.insert("", "end", values=i)
             self.produtos_lista.update()
         self.desconecta_bd()
-    def on_double_click(self, event):
+    def on_double_click(self, event):# Quando se faz doublee click as entrys preenchem automaticamente com os produtos em que o double click foi feito
         item = self.produtos_lista.selection()[0]
         values = self.produtos_lista.item(item, "values")
 
@@ -64,10 +65,12 @@ class Funcs:
         self.TextBox_Descrição.insert(tk.END, values[3])
 
         caminho = values[4]
+
         try:
             if hasattr(self, 'logo') and hasattr(self,'nova_imagem'):
-                self.nova_imagem.destroy()
+                self.nova_imagem.config(text="Alterar Imagem")
                 self.logo.destroy()
+
             ImagemProduto = ImageTk.PhotoImage(Image.open(caminho).resize((250, 135)))
             self.logo = Label(self.bodyFrame4_Produtos, image=ImagemProduto, bg='#2E3133', bd=1)
             self.logo.image = ImagemProduto
@@ -79,37 +82,49 @@ class Funcs:
             print("Erro: Imagem não Encontrada")
             self.nova_imagem = Button(self.bodyFrame4_Produtos, text="Adicione uma imagem", command=self.inserir_imagem ,bg='#2E3133', font=("", 10, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=20)
             self.nova_imagem.place(x=79, y=240)
-    def on_right_click(self, event):# função que quando se da um click com o butao direito na Treeview ela pergunta se quer apagar
-        item = self.produtos_lista.selection()[0] if self.produtos_lista.selection() else None
-        if item:
-            resposta = messagebox.askyesno("Confirmação", "Queres mesmo apagar isso?")
+    def Limpar(self):# função que quando se da um click com o butao direito na Treeview ela pergunta se quer apagar
+            resposta = messagebox.askyesno("Confirmação", "Limpar todas as Entrys?")
             if resposta:
                 self.Textbox_Produtos.delete(0, END)
                 self.Textbox_Preco.delete(0, END)
                 self.TextBox_Descrição.delete(1.0, END)
+                self.nova_imagem.config(text="Adicione uma imagem")
                 self.logo.destroy()
-
-    def inserir_imagem(self):#guarda as imagens que foram uploadadas numa pasta com um nome especifico para serem tratadas pela,base de dados
-        try:
+    def on_right_click(self, event):
+        self.conecta_bd()
+        item = self.produtos_lista.selection()[0] if self.produtos_lista.selection() else None
+        if item:
             item = self.produtos_lista.selection()[0]
             values = self.produtos_lista.item(item, "values")
-            item = item[3:]
+            item_id = values[0]
+            resposta = messagebox.askyesno("Confirmação", "Queres mesmo apagar isso?")
+            if resposta:
+                resultado = self.cursor.execute("UPDATE Produtos SET ativo = 0 WHERE id_produto = ?;", (item_id,))
+                self.desconecta_bd()
+                self.lista_produtos()
+        self.produtos_lista.update()
+
+    def inserir_imagem(self):#guarda as imagens que foram uploadadas numa pasta com um nome especifico para serem tratadas pela,base de dados
+
+        try:# verifica se esta alguma coisa selecionada. Se tiver vai fazer o id desse produto se nao vai continuar a partir do ultimo numero
+            item = self.produtos_lista.selection()[0]
+            values = self.produtos_lista.item(item, "values")
+            item = values[0]
         except IndexError:
             num_produtos = self.contar_Produtos() + 1
             item = num_produtos
+
         caminho_nova_imagem = filedialog.askopenfilename(initialdir="/", title="Selecione uma imagem", filetypes=(
             ("Arquivos de Imagem", "*.png;*.jpg;*.jpeg;*.gif"), ("Todos os arquivos", "*.*")))
         if caminho_nova_imagem:
-            imagem = Image.open(caminho_nova_imagem)
-            imagem = imagem.resize((250, 135))
-            diretorio_destino = "../imagens/"
-            nome_arquivo_destino = f"imagem_produto_{item}.png"
-            caminho_destino = os.path.join(diretorio_destino, nome_arquivo_destino)
-            imagem.save(caminho_destino)
+            imagem = Image.open(caminho_nova_imagem).resize((250, 135))
+            imagem.save(os.path.join("../imagens/", f"imagem_produto_{item}.png"))
             imagem_produto = ImageTk.PhotoImage(imagem)
+
             if hasattr(self, 'logo') and hasattr(self, 'nova_imagem'):
                 self.nova_imagem.destroy()
                 self.logo.destroy()
+
             self.logo = Label(self.bodyFrame4_Produtos, image=imagem_produto, bg='#2E3133', bd=1)
             self.logo.image = imagem_produto
             self.logo.place(x=15, y=275)
@@ -319,22 +334,25 @@ class Dashboard(Funcs):
         self.bodyFrame1_Produtos.place(x=28, y=90, width=660, height=650)
 
         ### Treeview que mostra todos os Produtos na base de dados
-        self.produtos_lista =tkinter.ttk.Treeview(self.bodyFrame1_Produtos, columns=("col1", "col2", "col3","col4","col5"))
+        self.produtos_lista =tkinter.ttk.Treeview(self.bodyFrame1_Produtos, columns=("col1", "col2", "col3","col4","col5","col6"))
         self.produtos_lista.heading("#0", text="")
         self.produtos_lista.heading("#1", text="Produto", anchor='w')
         self.produtos_lista.heading("#2", text="Nome", anchor='w')
         self.produtos_lista.heading("#3", text="Preço", anchor='w')
         self.produtos_lista.heading("#4", text="Descrição", anchor='w')
         self.produtos_lista.heading("#5", text="Imagem", anchor='w')
+        self.produtos_lista.heading("#6", text="Ativo", anchor='w')
         self.produtos_lista.column("#0", width=5, stretch=NO)
         self.produtos_lista.column("#1", width=100, stretch=NO)
         self.produtos_lista.column("#2", width=130, stretch=NO)
         self.produtos_lista.column("#3", width=76, stretch=NO)
         self.produtos_lista.column("#4", width=150, stretch=NO)
-        self.produtos_lista.column("#5", width=195, stretch=NO)
+        self.produtos_lista.column("#5", width=75, stretch=NO)
+        self.produtos_lista.column("#6", width=120, stretch=NO)
         self.produtos_lista.place(relx=-0.009, rely=0, relwidth=1.001, relheight=1.05)
         self.produtos_lista.bind("<Double-1>", self.on_double_click)
         self.produtos_lista.bind("<Button-3>", self.on_right_click)
+
         ### Sroll Bar
         self.sroll = Scrollbar(self.bodyFrame1_Produtos, orient="vertical")
         self.sroll.configure(command=self.produtos_lista.yview)
@@ -380,11 +398,24 @@ class Dashboard(Funcs):
 
         ### Label a dizer Alterar Produtos
         self.LabelAlterarProduto = Label(self.bodyFrame4_Produtos, bg="#2E3133", text="Alteral Produtos", font=("", 15, "bold"),fg='white')
-        self.LabelAlterarProduto.place(x=70, y=25)
+        self.LabelAlterarProduto.place(x=25, y=25)
 
         ### Linha
         self.lineFrame4_Produtos = Label(self.bodyFrame4_Produtos, text="______________________",font=("", 10, "bold"), fg='#FD9C3A', bg='#2E3133')
-        self.lineFrame4_Produtos.place(x=70, y=0)
+        self.lineFrame4_Produtos.place(x=25, y=0)
+
+        ### Imagen de um certo para aceitar
+        CertoImage = ImageTk.PhotoImage(Image.open('../imagens/aceitar.png'))
+        self.aceitar = Label(self.bodyFrame4_Produtos, image=CertoImage, bg='#2E3133')
+        self.aceitar.image = CertoImage
+        self.aceitar.place(x=260, y=25)
+
+        ### Imagen de uma vassoura para limpar as entrys
+        VassouraImage = ImageTk.PhotoImage(Image.open('../imagens/limpar.png'))
+        self.aceitar = Label(self.bodyFrame4_Produtos, image=VassouraImage, bg='#2E3133')
+        self.aceitar.image = VassouraImage
+        self.aceitar.place(x=225, y=25)
+        self.aceitar.bind("<Button-1>", lambda event: self.Limpar())
 
         ### Nome do Produto
         self.nomeProduto = Label(self.bodyFrame4_Produtos, text="Nome do Produto ", font=("", 10, "bold"), fg='white', bg='#2E3133')
@@ -418,17 +449,11 @@ class Dashboard(Funcs):
         self.LabelImagemPontos = Label(self.bodyFrame4_Produtos,text=": ", font=("", 10, "bold"), fg='#FD9C3A', bg='#2E3133')
         self.LabelImagemPontos.place(x=70,y=240)
 
-        ### Try que serve para abrir o programa sem imagem, e quando tiver imagem vai aparecer acho(?)
-        try:
-            ImagemProduto = ImageTk.PhotoImage(Image.open('../imagens/image.png').resize((256, 99)))
-            self.logo = Label(self.bodyFrame4_Produtos, image=ImagemProduto, bg='#2E3133',bd=1)
-            self.logo.image = ImagemProduto
-            self.logo.place(x=15, y=250)
-        except FileNotFoundError:
-            print("Erro:'Imagem não Encontrada'")
-            self.nova_imagem = Button(self.bodyFrame4_Produtos, text="Adicione uma imagem", command=lambda : self.inserir_imagem() ,bg='#2E3133', font=("", 10, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=20)
-            self.nova_imagem.place(x=79, y=240)
+        ### Butão para Adicionar Imagem / Alterar Imagem
+        self.nova_imagem = Button(self.bodyFrame4_Produtos, text="Adicione uma imagem", command=lambda : self.inserir_imagem() ,bg='#2E3133', font=("", 10, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=20)
+        self.nova_imagem.place(x=79, y=240)
         self.frameInicio.lift()
+
 def win():
     window = Tk()
     Dashboard(window)
