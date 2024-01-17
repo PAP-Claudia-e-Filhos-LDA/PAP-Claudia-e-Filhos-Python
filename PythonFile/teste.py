@@ -48,7 +48,7 @@ class Funcs:
     def lista_produtos(self):#faz o select que vai mostrar os produtos e as suas informações
         self.produtos_lista.delete(*self.produtos_lista.get_children())
         self.conecta_bd()
-        lista = self.cursor.execute("SELECT id_produto, nome_produto, preco, `desc`, CASE WHEN caminho_imagem IS NULL THEN 'Não tem' ELSE 'Tem' END AS status_imagem, CASE WHEN ativo = 1 THEN 'Sim' ELSE 'Não' END AS status_ativo FROM Produtos ORDER BY id_produto;")
+        lista = self.cursor.execute("SELECT id_produto, nome_produto, preco || ' €' AS preco,desc, caminho_imagem, CASE WHEN ativo = 1 THEN 'Sim' ELSE 'Não' END AS ativo FROM Produtos ORDER BY id_produto;")
         for i in lista:
             self.produtos_lista.insert("", "end", values=i)
             self.produtos_lista.update()
@@ -77,19 +77,19 @@ class Funcs:
             self.logo.place(x=15, y=275)
         except FileNotFoundError:
             if hasattr(self, 'logo') and hasattr(self,'nova_imagem'):
-                self.nova_imagem.destroy()
                 self.logo.destroy()
             print("Erro: Imagem não Encontrada")
             self.nova_imagem = Button(self.bodyFrame4_Produtos, text="Adicione uma imagem", command=self.inserir_imagem ,bg='#2E3133', font=("", 10, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=20)
             self.nova_imagem.place(x=79, y=240)
-    def Limpar(self):# função que quando se da um click com o butao direito na Treeview ela pergunta se quer apagar
+    def Limpar(self):# função que quando se da um click com o botao direito na Treeview ela pergunta se quer apagar
             resposta = messagebox.askyesno("Confirmação", "Limpar todas as Entrys?")
             if resposta:
                 self.Textbox_Produtos.delete(0, END)
                 self.Textbox_Preco.delete(0, END)
                 self.TextBox_Descrição.delete(1.0, END)
                 self.nova_imagem.config(text="Adicione uma imagem")
-                self.logo.destroy()
+                FundoImagem = ImageTk.PhotoImage(Image.open('../Imagens/semImagem.png').resize((250, 135)))
+                self.logo.image = FundoImagem
     def on_right_click(self, event):
         self.conecta_bd()
         item = self.produtos_lista.selection()[0] if self.produtos_lista.selection() else None
@@ -97,13 +97,20 @@ class Funcs:
             item = self.produtos_lista.selection()[0]
             values = self.produtos_lista.item(item, "values")
             item_id = values[0]
-            resposta = messagebox.askyesno("Confirmação", "Queres mesmo apagar isso?")
+            ativo = values[5]
+            if ativo == "Sim":
+                resposta = messagebox.askyesno("Confirmação", "Queres apagar isso?")
+            else:
+                resposta = messagebox.askyesno("Confirmação", "Queres ativar isso?")
+
             if resposta:
-                resultado = self.cursor.execute("UPDATE Produtos SET ativo = 0 WHERE id_produto = ?;", (item_id,))
+                if ativo == "Sim":
+                    resultado = self.cursor.execute("UPDATE Produtos SET ativo = 0 WHERE id_produto = ?;", (item_id,))
+                else:
+                    resultado = self.cursor.execute("UPDATE Produtos SET ativo = 1 WHERE id_produto = ?;", (item_id,))
                 self.desconecta_bd()
                 self.lista_produtos()
         self.produtos_lista.update()
-
     def inserir_imagem(self):#guarda as imagens que foram uploadadas numa pasta com um nome especifico para serem tratadas pela,base de dados
 
         try:# verifica se esta alguma coisa selecionada. Se tiver vai fazer o id desse produto se nao vai continuar a partir do ultimo numero
@@ -118,11 +125,10 @@ class Funcs:
             ("Arquivos de Imagem", "*.png;*.jpg;*.jpeg;*.gif"), ("Todos os arquivos", "*.*")))
         if caminho_nova_imagem:
             imagem = Image.open(caminho_nova_imagem).resize((250, 135))
-            imagem.save(os.path.join("../imagens/", f"imagem_produto_{item}.png"))
+            #imagem.save(os.path.join("../imagens/", f"imagem_produto_{item}.png"))
             imagem_produto = ImageTk.PhotoImage(imagem)
 
             if hasattr(self, 'logo') and hasattr(self, 'nova_imagem'):
-                self.nova_imagem.destroy()
                 self.logo.destroy()
 
             self.logo = Label(self.bodyFrame4_Produtos, image=imagem_produto, bg='#2E3133', bd=1)
@@ -137,17 +143,14 @@ class Dashboard(Funcs):
         self.window.state("zoomed")
         self.window.configure(background="#17191F")
 
-        #Frame Inicio (O primeiro de quando se abre o programa)
-        self.frameInicio = Frame(self.window, bg="#17191F")
-        self.frameInicio.place(x=300, y=0, width=1366, height=768)
+        # Icon da app
+        myappid = 'mycompany.myproduct.subproduct.version'
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        self.window.iconbitmap(r'../imagens/favicon.ico')
 
         ##############################################################################################################################################
         ##################################################### Barra Lateral ###########################################################################
         ##############################################################################################################################################
-        ## Icon
-        myappid = 'mycompany.myproduct.subproduct.version'
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-        self.window.iconbitmap(r'../imagens/favicon.ico')
 
         # Barra Lateral
         self.sidebar = Frame(self.window, bg="#2E3133")
@@ -164,27 +167,27 @@ class Dashboard(Funcs):
         self.EmpresaNome.place(x=45, y=240)
 
         # Opções
-        ## Inicio
+        ## Btn Inicio
         self.dashboard_text = Button(self.sidebar, text='Inicio', bg='#2E3133', font=("", 12, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=10,command=lambda: self.frameInicio.lift())
         self.dashboard_text.place(x=30, y=325)
 
-        ## Encomendas
+        ## Btn Encomendas
         self.manager_text = Button(self.sidebar, text='Encomendas', bg='#2E3133', font=("", 12, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=10)
         self.manager_text.place(x=160, y=325)
 
-        ## Produtos
+        ## Btn Produtos
         self.settings_text = Button(self.sidebar, text='Produtos', bg='#2E3133', font=("", 12, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=10,command=lambda: self.frameProdutos.lift())
         self.settings_text.place(x=30, y=375)
 
-        ## Clientes
+        ## Btn Clientes
         self.manager_text = Button(self.sidebar, text='Clientes', bg='#2E3133', font=("", 12, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=10)
         self.manager_text.place(x=160, y=375)
 
-        ## Lucro
+        ## Btn Lucro
         self.settings_text = Button(self.sidebar, text='Lucro', bg='#2E3133', font=("", 12, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=10)
         self.settings_text.place(x=30, y=425)
 
-        ## Sair
+        ## Btn Sair
         self.exit_text = Button(self.sidebar, text='Exit', bg='#2E3133', font=("", 12, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=10, command=self.window.quit)
         self.exit_text.place(x=160, y=425)
 
@@ -192,10 +195,15 @@ class Dashboard(Funcs):
         ##################################################### FRAME Inicio ##########################################################################
         ##############################################################################################################################################
 
+        #Frame Inicio (O primeiro de quando se abre o programa)
+        self.frameInicio = Frame(self.window, bg="#17191F")
+        self.frameInicio.place(x=300, y=0, width=1366, height=768)
+
         ## Label Dashboard
         self.heading_Inicio = Label(self.frameInicio, text="Dashboard", font=("", 13, "bold"), fg='white', bg='#17191F')
         self.heading_Inicio.place(x=25, y=50)
 
+        ##Linha
         self.line_Inicio = Label(self.frameInicio, text="____________", font=("", 10, "bold"), fg='#FD9C3A', bg='#17191F')
         self.line_Inicio.place(x=25, y=25)
 
@@ -238,7 +246,6 @@ class Dashboard(Funcs):
         canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=1)
         for text in ax.get_xticklabels() + ax.get_yticklabels():
             text.set_color('white')
-
 
         ## Frame 2 do body (Clientes)
         self.bodyFrame2_Inicio = Frame(self.frameInicio, bg="#2E3133")
@@ -321,7 +328,6 @@ class Dashboard(Funcs):
         self.frameProdutos.place(x=300, y=0, width=1366, height=768)
 
         # Corpo
-
         ## Label Dashboard
         self.heading_Produtos = Label(self.frameProdutos, text="Produtos", font=("", 13, "bold"), fg='white', bg='#17191F')
         self.heading_Produtos.place(x=25, y=50)
@@ -367,7 +373,6 @@ class Dashboard(Funcs):
         style.map('Treeview.Heading',foreground=[('selected', 'white')])
         style.configure('Treeview.Heading', background="#FD9C3A")
         style.configure('Treeview',rowheight=35)
-
 
         ## Frame 2 (Quantidade de Produtos)
         self.bodyFrame3_Produtos = Frame(self.frameProdutos, bg="#2E3133")
@@ -452,6 +457,19 @@ class Dashboard(Funcs):
         ### Butão para Adicionar Imagem / Alterar Imagem
         self.nova_imagem = Button(self.bodyFrame4_Produtos, text="Adicione uma imagem", command=lambda : self.inserir_imagem() ,bg='#2E3133', font=("", 10, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=20)
         self.nova_imagem.place(x=79, y=240)
+
+        ### Try que serve para abrir o programa sem imagem, e quando tiver imagem vai aparecer acho(?)
+        try:
+            ImagemProduto = ImageTk.PhotoImage(Image.open('../imagens/semImagem.png').resize((250, 135)))
+            self.logo = Label(self.bodyFrame4_Produtos, image=ImagemProduto, bg='#2E3133',bd=1)
+            self.logo.image = ImagemProduto
+            self.logo.place(x=15, y=275)
+        except FileNotFoundError:
+            print("Erro:'Imagem não Encontrada'")
+            self.nova_imagem = Button(self.bodyFrame4_Produtos, text="Adicione uma imagem", command=lambda : self.inserir_imagem() ,bg='#2E3133', font=("", 10, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=20)
+            self.nova_imagem.place(x=79, y=240)
+
+        #Puxar a janela do inicio para cima quando o programa
         self.frameInicio.lift()
 
 def win():
