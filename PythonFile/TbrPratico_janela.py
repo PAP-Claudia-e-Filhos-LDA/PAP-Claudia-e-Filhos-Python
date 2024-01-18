@@ -6,6 +6,7 @@ import sqlite3
 from datetime import datetime
 
 class Func:
+
     def conecta_bd(self): #faz conexao á base de dados
         self.conn = sqlite3.connect("../BD/Rissois.db")
         self.cursor = self.conn.cursor()

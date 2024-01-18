@@ -60,7 +60,7 @@ class Funcs:
         self.Textbox_Produtos.delete(0, tk.END)
         self.Textbox_Produtos.insert(0, values[1])
         self.Textbox_Preco.delete(0, tk.END)
-        self.Textbox_Preco.insert(0, values[2])
+        self.Textbox_Preco.insert(0, values[2][:-1])
         self.TextBox_Descrição.delete(1.0, tk.END)
         self.TextBox_Descrição.insert(tk.END, values[3])
 
@@ -99,9 +99,9 @@ class Funcs:
             item_id = values[0]
             ativo = values[5]
             if ativo == "Sim":
-                resposta = messagebox.askyesno("Confirmação", "Queres apagar isso?")
+                resposta = messagebox.askyesno("Confirmação", "Queres desativar este produto?")
             else:
-                resposta = messagebox.askyesno("Confirmação", "Queres ativar isso?")
+                resposta = messagebox.askyesno("Confirmação", "Queres ativar este produto?")
 
             if resposta:
                 if ativo == "Sim":
@@ -121,11 +121,10 @@ class Funcs:
             num_produtos = self.contar_Produtos() + 1
             item = num_produtos
 
-        caminho_nova_imagem = filedialog.askopenfilename(initialdir="/", title="Selecione uma imagem", filetypes=(
+        self.caminho_nova_imagem = filedialog.askopenfilename(initialdir="/", title="Selecione uma imagem", filetypes=(
             ("Arquivos de Imagem", "*.png;*.jpg;*.jpeg;*.gif"), ("Todos os arquivos", "*.*")))
-        if caminho_nova_imagem:
-            imagem = Image.open(caminho_nova_imagem).resize((250, 135))
-            #imagem.save(os.path.join("../imagens/", f"imagem_produto_{item}.png"))
+        if self.caminho_nova_imagem:
+            imagem = Image.open(self.caminho_nova_imagem).resize((250, 135))
             imagem_produto = ImageTk.PhotoImage(imagem)
 
             if hasattr(self, 'logo') and hasattr(self, 'nova_imagem'):
@@ -134,6 +133,27 @@ class Funcs:
             self.logo = Label(self.bodyFrame4_Produtos, image=imagem_produto, bg='#2E3133', bd=1)
             self.logo.image = imagem_produto
             self.logo.place(x=15, y=275)
+    def adicionar_produto(self):
+        try:# verifica se esta alguma coisa selecionada. Se tiver vai fazer o id desse produto se nao vai continuar a partir do ultimo numero
+            selcionado = self.produtos_lista.selection()
+            item = self.produtos_lista.selection()[0]
+            values = self.produtos_lista.item(item, "values")
+            item = values[0]
+        except IndexError:
+            num_produtos = self.contar_Produtos()
+            item = num_produtos
+        nome = self.Textbox_Produtos.get()
+        preco = self.Textbox_Preco.get()
+        desc = self.TextBox_Descrição.get("1.0", "end-1c")
+        imagem = Image.open(self.caminho_nova_imagem).resize((250, 135))
+        imagem.save(os.path.join("../imagens/", f"imagem_produto_{item}.png"))
+        imagem =  "../imagens/"+ f"imagem_produto_{item}.png"
+        self.conecta_bd()
+        if selcionado:
+            self.cursor.execute("UPDATE Produtos SET nome_produto=?, preco=?, `desc`=?, caminho_imagem=?, ativo=? WHERE id_produto=?",(nome, preco, desc,imagem, 1, item))
+        else:
+            self.cursor.execute("INSERT INTO Produtos (nome_produto, preco,desc,caminho_imagem,ativo) VALUES (?, ?,?,?,?)", (nome, preco,desc,imagem,1))
+        self.desconecta_bd()
 class Dashboard(Funcs):
     def __init__(self, window):
         # janela principal
@@ -414,13 +434,14 @@ class Dashboard(Funcs):
         self.aceitar = Label(self.bodyFrame4_Produtos, image=CertoImage, bg='#2E3133')
         self.aceitar.image = CertoImage
         self.aceitar.place(x=260, y=25)
+        self.aceitar.bind("<Button-1>", lambda event: self.adicionar_produto())
 
         ### Imagen de uma vassoura para limpar as entrys
         VassouraImage = ImageTk.PhotoImage(Image.open('../imagens/limpar.png'))
-        self.aceitar = Label(self.bodyFrame4_Produtos, image=VassouraImage, bg='#2E3133')
-        self.aceitar.image = VassouraImage
-        self.aceitar.place(x=225, y=25)
-        self.aceitar.bind("<Button-1>", lambda event: self.Limpar())
+        self.limpar = Label(self.bodyFrame4_Produtos, image=VassouraImage, bg='#2E3133')
+        self.limpar.image = VassouraImage
+        self.limpar.place(x=225, y=25)
+        self.limpar.bind("<Button-1>", lambda event: self.Limpar())
 
         ### Nome do Produto
         self.nomeProduto = Label(self.bodyFrame4_Produtos, text="Nome do Produto ", font=("", 10, "bold"), fg='white', bg='#2E3133')
@@ -454,7 +475,7 @@ class Dashboard(Funcs):
         self.LabelImagemPontos = Label(self.bodyFrame4_Produtos,text=": ", font=("", 10, "bold"), fg='#FD9C3A', bg='#2E3133')
         self.LabelImagemPontos.place(x=70,y=240)
 
-        ### Butão para Adicionar Imagem / Alterar Imagem
+        ### Botão para Adicionar Imagem / Alterar Imagem
         self.nova_imagem = Button(self.bodyFrame4_Produtos, text="Adicione uma imagem", command=lambda : self.inserir_imagem() ,bg='#2E3133', font=("", 10, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=20)
         self.nova_imagem.place(x=79, y=240)
 
@@ -469,7 +490,7 @@ class Dashboard(Funcs):
             self.nova_imagem = Button(self.bodyFrame4_Produtos, text="Adicione uma imagem", command=lambda : self.inserir_imagem() ,bg='#2E3133', font=("", 10, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=20)
             self.nova_imagem.place(x=79, y=240)
 
-        #Puxar a janela do inicio para cima quando o programa
+        #Puxar a janela do inicio para cima quando o programa abrir
         self.frameInicio.lift()
 
 def win():
