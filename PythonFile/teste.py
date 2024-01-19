@@ -8,9 +8,8 @@ import sqlite3
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import tkinter as tk
-from tkinter import ttk,Text, WORD, END, INSERT,filedialog,simpledialog,messagebox
+from tkinter import ttk, Text, WORD, END, INSERT, filedialog, simpledialog, messagebox
 import os
-
 
 '''Notas:
 #FD9C3A -> Laranja 
@@ -133,7 +132,8 @@ class Funcs:
             self.logo = Label(self.bodyFrame4_Produtos, image=imagem_produto, bg='#2E3133', bd=1)
             self.logo.image = imagem_produto
             self.logo.place(x=15, y=275)
-    def adicionar_produto(self):
+    def adicionar_produto(self):# função que vai adicionar os produtos/alterar um produto já existente
+        self.conecta_bd()
         try:# verifica se esta alguma coisa selecionada. Se tiver vai fazer o id desse produto se nao vai continuar a partir do ultimo numero
             selcionado = self.produtos_lista.selection()
             item = self.produtos_lista.selection()[0]
@@ -142,18 +142,61 @@ class Funcs:
         except IndexError:
             num_produtos = self.contar_Produtos()
             item = num_produtos
+
         nome = self.Textbox_Produtos.get()
+        if nome.strip() == "":  #este if serve para saber se a variavel foi preenchida ou nao
+            try: #se essa mesma variavel nao foi preenchida vai buscar á base de dados a anteriror para o registo nao ficar em branco
+                result = self.cursor.execute("SELECT nome_produto FROM Produtos WHERE id_produto=?", (item,)).fetchone()
+                if result:
+                    nome = result[0]
+            except Exception:
+                print("Ocorreu um erro com o nome, tente novamente.")
+
         preco = self.Textbox_Preco.get()
+        if preco.strip() == "":
+            try:
+                result = self.cursor.execute("SELECT preco FROM Produtos WHERE id_produto=?", (item,)).fetchone()
+                if result:
+                    preco = result[0]
+            except Exception:
+                print("Ocorreu um erro com o preco, tente novamente.")
+
         desc = self.TextBox_Descrição.get("1.0", "end-1c")
-        imagem = Image.open(self.caminho_nova_imagem).resize((250, 135))
-        imagem.save(os.path.join("../imagens/", f"imagem_produto_{item}.png"))
-        imagem =  "../imagens/"+ f"imagem_produto_{item}.png"
-        self.conecta_bd()
+        if desc.strip() == "":
+            try:
+                result = self.cursor.execute("SELECT `desc` FROM Produtos WHERE id_produto=?", (item,)).fetchone()
+                if result:
+                    desc = result[0]
+            except Exception:
+                print("Ocorreu um erro com a descrição, tente novamente.")
+
+        try:
+            imagem = Image.open(self.caminho_nova_imagem).resize((250, 135))
+            imagem.save(os.path.join("../imagens/", f"imagem_produto_{item}.png"))
+            imagem = "../imagens/" + f"imagem_produto_{item}.png"
+        except Exception:
+            try:
+                result = self.cursor.execute("SELECT caminho_imagem FROM Produtos WHERE id_produto=?",(item,)).fetchone()
+                if result:
+                    imagem = result[0]
+            except Exception:
+                print("Ocorreu um erro com a imagem, tente novamente.")
+
         if selcionado:
-            self.cursor.execute("UPDATE Produtos SET nome_produto=?, preco=?, `desc`=?, caminho_imagem=?, ativo=? WHERE id_produto=?",(nome, preco, desc,imagem, 1, item))
+            self.conecta_bd()
+            self.cursor.execute("UPDATE Produtos SET nome_produto=?, preco=?, `desc`=?, caminho_imagem=? WHERE id_produto=?",(nome, preco, desc, imagem, item))
+            self.desconecta_bd()
         else:
-            self.cursor.execute("INSERT INTO Produtos (nome_produto, preco,desc,caminho_imagem,ativo) VALUES (?, ?,?,?,?)", (nome, preco,desc,imagem,1))
-        self.desconecta_bd()
+            self.conecta_bd()
+            self.cursor.execute("INSERT INTO Produtos (nome_produto, preco, `desc`, caminho_imagem, ativo) VALUES (?, ?,?,?,?)",(nome, preco, desc, imagem, 1))
+            self.desconecta_bd()
+            self.N_produtosFrame3_Produtos.config(text=int(self.contar_Produtos()))
+        self.lista_produtos()
+        self.produtos_lista.update()
+        if hasattr(self, 'logo') and hasattr(self, 'nova_imagem'):
+            self.logo.destroy()
+            self.nova_imagem.config(text="Adicione uma imagem ")
+
 class Dashboard(Funcs):
     def __init__(self, window):
         # janela principal
