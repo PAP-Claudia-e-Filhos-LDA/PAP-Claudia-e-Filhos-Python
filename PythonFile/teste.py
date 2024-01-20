@@ -21,7 +21,7 @@ class Funcs:
     def conecta_bd(self):  # faz conexao á base de dados
         self.conn = sqlite3.connect("../BD/Rissois.db")
         self.cursor = self.conn.cursor()
-    def desconecta_bd(self):  # desliga a conexao á base de dados
+    def desconecta_bd(self):  # desliga a conexao á base de dados e confirma o script feito
         self.conn.commit()
         self.conn.close()
     def contar_clientes(self):  # função pra contar o numero de clientes
@@ -44,7 +44,7 @@ class Funcs:
         resultado = self.cursor.execute("SELECT COUNT(*) FROM Encomendas").fetchone()
         self.desconecta_bd()
         return resultado[0]
-    def lista_produtos(self):#faz o select que vai mostrar os produtos e as suas informações
+    def lista_produtos(self):#faz o select que vai mostrar os produtos e as suas informações e que depois mete na treeview
         self.produtos_lista.delete(*self.produtos_lista.get_children())
         self.conecta_bd()
         lista = self.cursor.execute("SELECT id_produto, nome_produto, preco || ' €' AS preco,desc, caminho_imagem, CASE WHEN ativo = 1 THEN 'Sim' ELSE 'Não' END AS ativo FROM Produtos ORDER BY id_produto;")
@@ -53,9 +53,11 @@ class Funcs:
             self.produtos_lista.update()
         self.desconecta_bd()
     def on_double_click(self, event):# Quando se faz doublee click as entrys preenchem automaticamente com os produtos em que o double click foi feito
+        #buscar o valor que esta selecionado (onde foi o double click)
         item = self.produtos_lista.selection()[0]
         values = self.produtos_lista.item(item, "values")
 
+        #substitui os valores das entrys pelos valores onde o double click foi
         self.Textbox_Produtos.delete(0, tk.END)
         self.Textbox_Produtos.insert(0, values[1])
         self.Textbox_Preco.delete(0, tk.END)
@@ -63,139 +65,109 @@ class Funcs:
         self.TextBox_Descrição.delete(1.0, tk.END)
         self.TextBox_Descrição.insert(tk.END, values[3])
 
-        caminho = values[4]
+        #caminho da imagem = values[4]
 
-        try:
-            if hasattr(self, 'logo') and hasattr(self,'nova_imagem'):
-                self.nova_imagem.config(text="Alterar Imagem")
-                self.logo.destroy()
+        try:# este try serve para que não ocorra um erro quando se vai buscar a imagem á base de dados
 
-            ImagemProduto = ImageTk.PhotoImage(Image.open(caminho).resize((250, 135)))
-            self.logo = Label(self.bodyFrame4_Produtos, image=ImagemProduto, bg='#2E3133', bd=1)
+            ImagemProduto = ImageTk.PhotoImage(Image.open(values[4]).resize((250, 135)))
+            #se o try nao der e erro e houver uma imagem antes, essa mesma imagem é trocada por outra e o texto do botao é mudado
+            self.nova_imagem.config(text="Alterar Imagem")
+            self.logo.config(image=ImagemProduto)
             self.logo.image = ImagemProduto
-            self.logo.place(x=15, y=275)
-        except FileNotFoundError:
-            if hasattr(self, 'logo') and hasattr(self,'nova_imagem'):
-                self.logo.destroy()
-            print("Erro: Imagem não Encontrada")
-            self.nova_imagem = Button(self.bodyFrame4_Produtos, text="Adicione uma imagem", command=self.inserir_imagem ,bg='#2E3133', font=("", 10, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=20)
-            self.nova_imagem.place(x=79, y=240)
-    def Limpar(self):# função que quando se da um click com o botao direito na Treeview ela pergunta se quer apagar
+
+        except FileNotFoundError: #se na base de dados não estiver nenhuma imagem/houver um erro a ir buscar uma imagem vai trocar a imagem e o texto do botão
+
+            ImagemProduto =ImageTk.PhotoImage(Image.open('../imagens/semImagem.png').resize((250, 135)))
+            hora_erro = datetime.now().strftime("%H:%M:%S")
+            print(f"Erro: Imagem não Encontrada - {hora_erro}")
+            self.logo.config(image=ImagemProduto)
+            self.logo.image = ImagemProduto
+            self.nova_imagem.config(text="Adicione uma imagem")
+    def Limpar(self):# ffunção que server para limpar as entrys e a seleção da treeview
             resposta = messagebox.askyesno("Confirmação", "Limpar todas as Entrys?")
             if resposta:
                 self.Textbox_Produtos.delete(0, END)
                 self.Textbox_Preco.delete(0, END)
                 self.TextBox_Descrição.delete(1.0, END)
                 self.nova_imagem.config(text="Adicione uma imagem")
-                FundoImagem = ImageTk.PhotoImage(Image.open('../Imagens/semImagem.png').resize((250, 135)))
-                self.logo.image = FundoImagem
-    def on_right_click(self, event):
+                self.logo.image = ImageTk.PhotoImage(Image.open('../Imagens/semImagem.png').resize((250, 135)))
+                self.produtos_lista.selection_remove(self.produtos_lista.selection())
+    def on_right_click(self, event):# função que com o botao direito desativa o produto (basicamente torna o produto indesponivel)
         self.conecta_bd()
-        item = self.produtos_lista.selection()[0] if self.produtos_lista.selection() else None
+        item = self.produtos_lista.selection()[0] if self.produtos_lista.selection() else None #vai buscar o valor do produto selecionado
+
         if item:
-            item = self.produtos_lista.selection()[0]
             values = self.produtos_lista.item(item, "values")
-            item_id = values[0]
-            ativo = values[5]
-            if ativo == "Sim":
-                resposta = messagebox.askyesno("Confirmação", "Queres desativar este produto?")
-            else:
-                resposta = messagebox.askyesno("Confirmação", "Queres ativar este produto?")
+            novo_estado = 0 if values[5] == "Sim" else 1 #se o estado for Sim o valor é 1 se não é 0
+            pergunta = "Queres desativar este produto?" if values[5] == "Sim" else "Queres ativar este produto?" #se o produto estiver ativo pergunta se quer desativar se não pergunta se quer ativar
 
-            if resposta:
-                if ativo == "Sim":
-                    resultado = self.cursor.execute("UPDATE Produtos SET ativo = 0 WHERE id_produto = ?;", (item_id,))
-                else:
-                    resultado = self.cursor.execute("UPDATE Produtos SET ativo = 1 WHERE id_produto = ?;", (item_id,))
-                self.desconecta_bd()
-                self.lista_produtos()
-        self.produtos_lista.update()
-    def inserir_imagem(self):#guarda as imagens que foram uploadadas numa pasta com um nome especifico para serem tratadas pela,base de dados
+            if messagebox.askyesno("Confirmação", pergunta):
+                resultado = self.cursor.execute("UPDATE Produtos SET ativo = ? WHERE id_produto = ?;",(novo_estado, values[0]))
 
-        try:# verifica se esta alguma coisa selecionada. Se tiver vai fazer o id desse produto se nao vai continuar a partir do ultimo numero
-            item = self.produtos_lista.selection()[0]
-            values = self.produtos_lista.item(item, "values")
-            item = values[0]
-        except IndexError:
-            num_produtos = self.contar_Produtos() + 1
-            item = num_produtos
-
-        self.caminho_nova_imagem = filedialog.askopenfilename(initialdir="/", title="Selecione uma imagem", filetypes=(
-            ("Arquivos de Imagem", "*.png;*.jpg;*.jpeg;*.gif"), ("Todos os arquivos", "*.*")))
-        if self.caminho_nova_imagem:
-            imagem = Image.open(self.caminho_nova_imagem).resize((250, 135))
-            imagem_produto = ImageTk.PhotoImage(imagem)
-
-            if hasattr(self, 'logo') and hasattr(self, 'nova_imagem'):
-                self.logo.destroy()
-
-            self.logo = Label(self.bodyFrame4_Produtos, image=imagem_produto, bg='#2E3133', bd=1)
-            self.logo.image = imagem_produto
-            self.logo.place(x=15, y=275)
-    def adicionar_produto(self):# função que vai adicionar os produtos/alterar um produto já existente
-        self.conecta_bd()
-        try:# verifica se esta alguma coisa selecionada. Se tiver vai fazer o id desse produto se nao vai continuar a partir do ultimo numero
-            selcionado = self.produtos_lista.selection()
-            item = self.produtos_lista.selection()[0]
-            values = self.produtos_lista.item(item, "values")
-            item = values[0]
-        except IndexError:
-            num_produtos = self.contar_Produtos()
-            item = num_produtos
-
-        nome = self.Textbox_Produtos.get()
-        if nome.strip() == "":  #este if serve para saber se a variavel foi preenchida ou nao
-            try: #se essa mesma variavel nao foi preenchida vai buscar á base de dados a anteriror para o registo nao ficar em branco
-                result = self.cursor.execute("SELECT nome_produto FROM Produtos WHERE id_produto=?", (item,)).fetchone()
-                if result:
-                    nome = result[0]
-            except Exception:
-                print("Ocorreu um erro com o nome, tente novamente.")
-
-        preco = self.Textbox_Preco.get()
-        if preco.strip() == "":
-            try:
-                result = self.cursor.execute("SELECT preco FROM Produtos WHERE id_produto=?", (item,)).fetchone()
-                if result:
-                    preco = result[0]
-            except Exception:
-                print("Ocorreu um erro com o preco, tente novamente.")
-
-        desc = self.TextBox_Descrição.get("1.0", "end-1c")
-        if desc.strip() == "":
-            try:
-                result = self.cursor.execute("SELECT `desc` FROM Produtos WHERE id_produto=?", (item,)).fetchone()
-                if result:
-                    desc = result[0]
-            except Exception:
-                print("Ocorreu um erro com a descrição, tente novamente.")
-
-        try:
-            imagem = Image.open(self.caminho_nova_imagem).resize((250, 135))
-            imagem.save(os.path.join("../imagens/", f"imagem_produto_{item}.png"))
-            imagem = "../imagens/" + f"imagem_produto_{item}.png"
-        except Exception:
-            try:
-                result = self.cursor.execute("SELECT caminho_imagem FROM Produtos WHERE id_produto=?",(item,)).fetchone()
-                if result:
-                    imagem = result[0]
-            except Exception:
-                print("Ocorreu um erro com a imagem, tente novamente.")
-
-        if selcionado:
-            self.conecta_bd()
-            self.cursor.execute("UPDATE Produtos SET nome_produto=?, preco=?, `desc`=?, caminho_imagem=? WHERE id_produto=?",(nome, preco, desc, imagem, item))
-            self.desconecta_bd()
-        else:
-            self.conecta_bd()
-            self.cursor.execute("INSERT INTO Produtos (nome_produto, preco, `desc`, caminho_imagem, ativo) VALUES (?, ?,?,?,?)",(nome, preco, desc, imagem, 1))
-            self.desconecta_bd()
-            self.N_produtosFrame3_Produtos.config(text=int(self.contar_Produtos()))
+        self.desconecta_bd()
         self.lista_produtos()
         self.produtos_lista.update()
-        if hasattr(self, 'logo') and hasattr(self, 'nova_imagem'):
-            self.logo.destroy()
+    def inserir_imagem(self):#guarda as imagens que foram uploadadas numa pasta com um nome especifico para serem tratadas pela,base de dados
+        try:# verifica se esta alguma coisa selecionada. Se tiver vai fazer o id desse produto se nao vai continuar a partir do ultimo numero
+            item = self.produtos_lista.item(self.produtos_lista.selection()[0], "values")[0]
+        except IndexError:
+            item = self.contar_Produtos() + 1
+
+        self.caminho_nova_imagem = filedialog.askopenfilename(initialdir="/",title="Selecione uma imagem",filetypes=(("Arquivos de Imagem", "*.png;*.jpg;*.jpeg;*.gif"), ("Todos os arquivos", "*.*")))
+
+        if self.caminho_nova_imagem: # mostra a imagem que eu adicionei , mas ainda nao a guarda
+            self.nova_imagem.config(text="Alterar imagem")
+            nova_imagem = Image.open(self.caminho_nova_imagem).resize((250, 135))
+            photo_image = ImageTk.PhotoImage(nova_imagem)
+            self.logo.config(image=photo_image)
+            self.logo.image = photo_image
+    def adicionar_produto(self):# função que vai adicionar os produtos/alterar um produto já existente
+            self.conecta_bd()
+            #vai bucar o numero do produto selecionado se não vai adicionar um produto indo buscar o numero de produtos
+            selecionado = self.produtos_lista.selection()
+            item = self.produtos_lista.item(selecionado[0], "values")[0] if selecionado else self.contar_Produtos()
+
+            #vai buscar os dados que estão nas entrys , mas se alguma delas estiver vazia ,vai buscar o valor que estava antes na base de dados para nao ocorrer nenhum erro
+            try:
+                nome = self.Textbox_Produtos.get() or self.cursor.execute("SELECT nome_produto FROM Produtos WHERE id_produto=?", (item,)).fetchone()[0]
+            except:
+                if not selecionado:
+                    self.nome_erro = Label(self.bodyFrame4_Produtos, bg="#2E3133", text="Nome Inválido", font=("", 10, "bold"), fg='red')
+                    self.nome_erro.place(x=200, y=45)
+
+            preco = self.Textbox_Preco.get() or self.cursor.execute("SELECT preco FROM Produtos WHERE id_produto=?", (item,)).fetchone()[0]
+            desc = self.TextBox_Descrição.get("1.0", "end-1c") or self.cursor.execute("SELECT `desc` FROM Produtos WHERE id_produto=?", (item,)).fetchone()[0]
+
+
+            try:
+                # vai buscar o caminho da imagem da função self.inserir_imagem e guarda a imagem numa pasta especifica e muda o nome dela para algo expecifico para ser guardado mais facilmente na base de dados
+                imagem = Image.open(self.caminho_nova_imagem).resize((250, 135))
+                imagem.save(os.path.join("../imagens/", f"imagem_produto_{item+1}.png"))
+                imagem = "../imagens/" + f"imagem_produto_{item}.png"
+            except Exception:
+                #se ocorrer um erro vai buscar a imagem que estava na base de dados antes de todas as alterações
+                if selecionado:
+                    imagem = self.cursor.execute("SELECT caminho_imagem FROM Produtos WHERE id_produto=?", (item,)).fetchone()[0]
+
+
+            if selecionado: #se algum produto estiver selecionado vai atualizar se não tiver vai adicionar um novo
+                self.conecta_bd()
+                self.cursor.execute("UPDATE Produtos SET nome_produto=?, preco=?, `desc`=?, caminho_imagem=? WHERE id_produto=?",(nome, preco, desc, imagem, item))
+                self.desconecta_bd()
+            else:
+                self.conecta_bd()
+                self.cursor.execute("INSERT INTO Produtos (nome_produto, preco, `desc`, caminho_imagem, ativo) VALUES (?, ?, ?, ?, ?)",(nome, preco, desc, imagem, 1))
+                self.desconecta_bd()
+            self.N_produtosFrame3_Produtos.config(text=int(self.contar_Produtos()))
+            self.N_produtosFrame3_Inicio.config(text=int(self.contar_Produtos()))
+
+            self.nova_imagem.config(text="Adicione uma imagem")
+            self.logo.image = ImageTk.PhotoImage(Image.open('../Imagens/semImagem.png').resize((250, 135)))
             self.nova_imagem.config(text="Adicione uma imagem ")
+
+            self.lista_produtos()
+            self.produtos_lista.update()
+
 
 class Dashboard(Funcs):
     def __init__(self, window):
@@ -251,7 +223,7 @@ class Dashboard(Funcs):
         self.settings_text.place(x=30, y=425)
 
         ## Btn Sair
-        self.exit_text = Button(self.sidebar, text='Exit', bg='#2E3133', font=("", 12, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=10, command=self.window.quit)
+        self.exit_text = Button(self.sidebar, text='Sair', bg='#2E3133', font=("", 12, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=10, command=self.window.quit)
         self.exit_text.place(x=160, y=425)
 
         ##############################################################################################################################################
@@ -354,8 +326,7 @@ class Dashboard(Funcs):
         self.logo.place(x=25, y=21)
 
         ###Numero de Produtos
-        numProdutos = self.contar_Produtos()
-        self.N_produtosFrame3_Inicio = Label(self.bodyFrame3_Inicio, bg="#2E3133", text=str(numProdutos), font=("", 50, "bold"), fg='white')
+        self.N_produtosFrame3_Inicio = Label(self.bodyFrame3_Inicio, bg="#2E3133", text=str(self.contar_Produtos()), font=("", 50, "bold"), fg='white')
         self.N_produtosFrame3_Inicio.place(x=115, y=70)
 
         ## Frame 4 do body (Encomendas)
@@ -377,8 +348,7 @@ class Dashboard(Funcs):
         self.logo.place(x=25, y=21)
 
         ###Numero de Encomendas
-        numEncomendas = self.contar_Encomendas()
-        self.N_encomendasFrame4_Inicio = Label(self.bodyFrame4_Inicio, bg="#2E3133", text=str(numEncomendas), font=("", 50, "bold"),fg='white')
+        self.N_encomendasFrame4_Inicio = Label(self.bodyFrame4_Inicio, bg="#2E3133", text=int(self.contar_Encomendas()), font=("", 50, "bold"),fg='white')
         self.N_encomendasFrame4_Inicio.place(x=115, y=70)
 
 
@@ -425,8 +395,8 @@ class Dashboard(Funcs):
         ### Sroll Bar
         self.sroll = Scrollbar(self.bodyFrame1_Produtos, orient="vertical")
         self.sroll.configure(command=self.produtos_lista.yview)
-        self.produtos_lista.configure(yscroll=self.sroll.set)
         self.sroll.place(relx=0.94, rely=0.04, relwidth=0.051, relheight=0.96)
+        self.produtos_lista.configure(yscroll=self.sroll.set)
         self.lista_produtos()
 
         ### Decorar a Treeview
@@ -456,8 +426,7 @@ class Dashboard(Funcs):
         self.logo.place(x=20, y=16)
 
         ###Numero de Produtos
-        numProdutos = self.contar_Produtos()
-        self.N_produtosFrame3_Produtos = Label(self.bodyFrame3_Produtos, bg="#2E3133", text=str(numProdutos),font=("", 50, "bold"), fg='white')
+        self.N_produtosFrame3_Produtos = Label(self.bodyFrame3_Produtos, bg="#2E3133", text=int( self.contar_Produtos()),font=("", 50, "bold"), fg='white')
         self.N_produtosFrame3_Produtos.place(x=115, y=65)
 
         ## Frame 4 (Adicionar Produto)
@@ -529,9 +498,8 @@ class Dashboard(Funcs):
             self.logo.image = ImagemProduto
             self.logo.place(x=15, y=275)
         except FileNotFoundError:
-            print("Erro:'Imagem não Encontrada'")
-            self.nova_imagem = Button(self.bodyFrame4_Produtos, text="Adicione uma imagem", command=lambda : self.inserir_imagem() ,bg='#2E3133', font=("", 10, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=20)
-            self.nova_imagem.place(x=79, y=240)
+            hora_erro = datetime.now().strftime("%H:%M:%S")
+            print(f"Erro: Imagem não Encontrada - {hora_erro}")
 
         #Puxar a janela do inicio para cima quando o programa abrir
         self.frameInicio.lift()
