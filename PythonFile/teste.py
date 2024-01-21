@@ -92,6 +92,7 @@ class Funcs:
                 self.nova_imagem.config(text="Adicione uma imagem")
                 self.logo.image = ImageTk.PhotoImage(Image.open('../Imagens/semImagem.png').resize((250, 135)))
                 self.produtos_lista.selection_remove(self.produtos_lista.selection())
+                self.nome_erro.config(text="")
     def on_right_click(self, event):# função que com o botao direito desativa o produto (basicamente torna o produto indesponivel)
         self.conecta_bd()
         item = self.produtos_lista.selection()[0] if self.produtos_lista.selection() else None #vai buscar o valor do produto selecionado
@@ -113,9 +114,16 @@ class Funcs:
         except IndexError:
             item = self.contar_Produtos() + 1
 
-        self.caminho_nova_imagem = filedialog.askopenfilename(initialdir="/",title="Selecione uma imagem",filetypes=(("Arquivos de Imagem", "*.png;*.jpg;*.jpeg;*.gif"), ("Todos os arquivos", "*.*")))
+        self.caminho_nova_imagem = filedialog.askopenfilename(initialdir="/",title="Selecione uma imagem",filetypes=(("Arquivos de Imagem", "*.png;*.jpg;*.jpeg;"), ("Todos os arquivos", "*.*")))
 
-        if self.caminho_nova_imagem: # mostra a imagem que eu adicionei , mas ainda nao a guarda
+        if self.caminho_nova_imagem and not self.caminho_nova_imagem.lower().endswith(('.png', '.jpg', '.jpeg')):
+            if hasattr(self, 'nome_erro'):
+                self.nome_erro.config(text='Tipo de ficheiro errado')
+            else:
+                self.nome_erro = Label(self.bodyFrame4_Produtos, bg="#2E3133", text='Tipo de ficheiro errado',font=("", 8, "bold"), fg='red')
+                self.nome_erro.place(x=25, y=50)
+
+        else:
             self.nova_imagem.config(text="Alterar imagem")
             nova_imagem = Image.open(self.caminho_nova_imagem).resize((250, 135))
             photo_image = ImageTk.PhotoImage(nova_imagem)
@@ -125,50 +133,78 @@ class Funcs:
             self.conecta_bd()
             #vai bucar o numero do produto selecionado se não vai adicionar um produto indo buscar o numero de produtos
             selecionado = self.produtos_lista.selection()
-            item = self.produtos_lista.item(selecionado[0], "values")[0] if selecionado else self.contar_Produtos()
+            item = self.produtos_lista.item(selecionado[0], "values")[0] if selecionado else int(self.contar_Produtos()) + 1
+            mensagens_erro = [] #lista com as palavras para a mensagem de erro
 
             #vai buscar os dados que estão nas entrys , mas se alguma delas estiver vazia ,vai buscar o valor que estava antes na base de dados para nao ocorrer nenhum erro
             try:
                 nome = self.Textbox_Produtos.get() or self.cursor.execute("SELECT nome_produto FROM Produtos WHERE id_produto=?", (item,)).fetchone()[0]
-            except:
+                if len(str(nome)) > 45:
+                    mensagens_erro.append("Nome")
+            except Exception:
                 if not selecionado:
-                    self.nome_erro = Label(self.bodyFrame4_Produtos, bg="#2E3133", text="Nome Inválido", font=("", 10, "bold"), fg='red')
-                    self.nome_erro.place(x=200, y=45)
-
-            preco = self.Textbox_Preco.get() or self.cursor.execute("SELECT preco FROM Produtos WHERE id_produto=?", (item,)).fetchone()[0]
-            desc = self.TextBox_Descrição.get("1.0", "end-1c") or self.cursor.execute("SELECT `desc` FROM Produtos WHERE id_produto=?", (item,)).fetchone()[0]
-
+                    mensagens_erro.append("Nome")
 
             try:
-                # vai buscar o caminho da imagem da função self.inserir_imagem e guarda a imagem numa pasta especifica e muda o nome dela para algo expecifico para ser guardado mais facilmente na base de dados
+                preco = float(self.Textbox_Preco.get()) or float(self.cursor.execute("SELECT preco FROM Produtos WHERE id_produto=?", (item,)).fetchone()[0])
+                if len(str(preco).split('.')[0]) > 10 or len(str(preco).split('.')[1]) > 2:
+                    mensagens_erro.append("Preço")
+            except Exception:
+                if not selecionado:
+                    mensagens_erro.append("Preço")
+
+            try:
+                desc = self.TextBox_Descrição.get("1.0", "end-1c") or self.cursor.execute("SELECT `desc` FROM Produtos WHERE id_produto=?", (item,)).fetchone()[0]
+                if len(str(desc)) > 300:
+                    mensagens_erro.append("Descrição")
+            except Exception:
+                if not selecionado:
+                    mensagens_erro.append("Descrição")
+
+            try:
                 imagem = Image.open(self.caminho_nova_imagem).resize((250, 135))
-                imagem.save(os.path.join("../imagens/", f"imagem_produto_{item+1}.png"))
+                imagem.save(os.path.join("../imagens/", f"imagem_produto_{item}.png"))
                 imagem = "../imagens/" + f"imagem_produto_{item}.png"
             except Exception:
-                #se ocorrer um erro vai buscar a imagem que estava na base de dados antes de todas as alterações
                 if selecionado:
                     imagem = self.cursor.execute("SELECT caminho_imagem FROM Produtos WHERE id_produto=?", (item,)).fetchone()[0]
+                else:
+                    mensagens_erro.append("Imagem")
 
+            if not selecionado and mensagens_erro: #se um produto nao estiver selecionado (significa que nada vai ser atualizado, e que o utilizador vai adicionar um produto) vai criar a mensagem de erro com os erros que apareceram
+                if hasattr(self, 'nome_erro'):
+                    mensagem_completa = ", ".join(mensagens_erro) + " Invalidos"
+                    self.nome_erro.config(text=mensagem_completa)
+                    self.nome_erro.place(x=25, y=50)
+                else:
+                    mensagem_completa = ", ".join(mensagens_erro) + " Invalidos"
+                    self.nome_erro = Label(self.bodyFrame4_Produtos, bg="#2E3133", text=mensagem_completa,font=("", 8, "bold"), fg='red')
+                    self.nome_erro.place(x=25, y=50)
 
-            if selecionado: #se algum produto estiver selecionado vai atualizar se não tiver vai adicionar um novo
-                self.conecta_bd()
-                self.cursor.execute("UPDATE Produtos SET nome_produto=?, preco=?, `desc`=?, caminho_imagem=? WHERE id_produto=?",(nome, preco, desc, imagem, item))
-                self.desconecta_bd()
-            else:
-                self.conecta_bd()
-                self.cursor.execute("INSERT INTO Produtos (nome_produto, preco, `desc`, caminho_imagem, ativo) VALUES (?, ?, ?, ?, ?)",(nome, preco, desc, imagem, 1))
-                self.desconecta_bd()
-            self.N_produtosFrame3_Produtos.config(text=int(self.contar_Produtos()))
-            self.N_produtosFrame3_Inicio.config(text=int(self.contar_Produtos()))
+            if not any(mensagens_erro):# se a mensagem de erro estiver vazia e o wigget estiver criado , o wigget vai ser apagado
+                if hasattr(self, 'nome_erro'):
+                    self.nome_erro.destroy()
 
-            self.nova_imagem.config(text="Adicione uma imagem")
+            try: #vai tentar fazer as alterações na base de dados , se não der escreve uma mensagem de erro
+                if selecionado: #se algum produto estiver selecionado vai atualizar se não tiver vai adicionar um novo
+                    self.conecta_bd()
+                    self.cursor.execute("UPDATE Produtos SET nome_produto=?, preco=?, `desc`=?, caminho_imagem=? WHERE id_produto=?",(nome, preco, desc, imagem, item))
+                    self.desconecta_bd()
+                else:
+                    self.conecta_bd()
+                    self.cursor.execute("INSERT INTO Produtos (nome_produto, preco, `desc`, caminho_imagem, ativo) VALUES (?, ?, ?, ?, ?)",(nome, preco, desc, imagem, 1))
+                    self.desconecta_bd()
+                    self.N_produtosFrame3_Produtos.config(text=int(self.contar_Produtos()))
+                    self.N_produtosFrame3_Inicio.config(text=int(self.contar_Produtos()))
+            except:
+                hora_erro = datetime.now().strftime("%H:%M:%S")
+                print(f"Ocorreu um erro ao tentar adicionar/atualizar algo na base dados - {hora_erro}")
+
             self.logo.image = ImageTk.PhotoImage(Image.open('../Imagens/semImagem.png').resize((250, 135)))
-            self.nova_imagem.config(text="Adicione uma imagem ")
+            self.nova_imagem.config(text="Adicione uma imagem")
 
             self.lista_produtos()
             self.produtos_lista.update()
-
-
 class Dashboard(Funcs):
     def __init__(self, window):
         # janela principal
@@ -460,7 +496,7 @@ class Dashboard(Funcs):
         self.nomeProduto.place(x=15, y=75)
         self.labelProduto = Label(self.bodyFrame4_Produtos, text=": ", font=("", 10, "bold"), fg='#FD9C3A', bg='#2E3133')
         self.labelProduto.place(x=130, y=75)
-        self.Textbox_Produtos = Entry(self.bodyFrame4_Produtos,bg='#2E3133',fg='white')
+        self.Textbox_Produtos = Entry(self.bodyFrame4_Produtos,bg='#2E3133',fg='white', width=45)
         self.Textbox_Produtos.place(x=140, y=75,width=100 , height=25)
 
         ### Preço
