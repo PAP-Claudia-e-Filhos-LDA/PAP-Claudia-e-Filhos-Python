@@ -18,6 +18,8 @@ import os
 
 #TENTAR FAZER FUNÇÃO QUE ORDENE OS ITENS DA TREEVIEW'''
 class Funcs:
+
+    #funções para o ecra principal
     def conecta_bd(self):  # faz conexao á base de dados
         self.conn = sqlite3.connect("../BD/Rissois.db")
         self.cursor = self.conn.cursor()
@@ -44,6 +46,7 @@ class Funcs:
         resultado = self.cursor.execute("SELECT COUNT(*) FROM Encomendas").fetchone()
         self.desconecta_bd()
         return resultado[0]
+    # funções para os Produtos
     def lista_produtos(self):#faz o select que vai mostrar os produtos e as suas informações e que depois mete na treeview
         self.produtos_lista.delete(*self.produtos_lista.get_children())
         self.conecta_bd()
@@ -92,7 +95,8 @@ class Funcs:
                 self.nova_imagem.config(text="Adicione uma imagem")
                 self.logo.image = ImageTk.PhotoImage(Image.open('../Imagens/semImagem.png').resize((250, 135)))
                 self.produtos_lista.selection_remove(self.produtos_lista.selection())
-                self.nome_erro.config(text="")
+                if hasattr(self, 'nome_erro'):
+                    self.nome_erro.config(text="")
     def on_right_click(self, event):# função que com o botao direito desativa o produto (basicamente torna o produto indesponivel)
         self.conecta_bd()
         item = self.produtos_lista.selection()[0] if self.produtos_lista.selection() else None #vai buscar o valor do produto selecionado
@@ -205,6 +209,15 @@ class Funcs:
 
             self.lista_produtos()
             self.produtos_lista.update()
+    #função para Clintes
+    def lista_clientes(self):#faz o select que vai mostrar os clientes e as suas informações  que depois mete na treeview
+        self.clientes_lista.delete(*self.clientes_lista.get_children())
+        self.conecta_bd()
+        lista = self.cursor.execute("SELECT * FROM Clientes")
+        for i in lista:
+            self.clientes_lista.insert("", "end", values=i)
+            self.clientes_lista.update()
+        self.desconecta_bd()
 class Dashboard(Funcs):
     def __init__(self, window):
         # janela principal
@@ -229,9 +242,9 @@ class Dashboard(Funcs):
 
         ## Empresa Imagem
         EmpresaLogo = ImageTk.PhotoImage(Image.open('../imagens/profile.png'))
-        self.logo = Label(self.sidebar, image=EmpresaLogo, bg='#FD9C3A')
-        self.logo.image = EmpresaLogo
-        self.logo.place(x=70, y=80)
+        self.prety_icon_empresa_sidebar = Label(self.sidebar, image=EmpresaLogo, bg='#FD9C3A')
+        self.prety_icon_empresa_sidebar.image = EmpresaLogo
+        self.prety_icon_empresa_sidebar.place(x=70, y=80)
 
         ## Empresa Nome
         self.EmpresaNome = Label(self.sidebar, text='Claúdia e Filhos, Lda', bg='#2E3133', font=("", 15, "bold"),fg='white')
@@ -242,16 +255,16 @@ class Dashboard(Funcs):
         self.dashboard_text = Button(self.sidebar, text='Inicio', bg='#2E3133', font=("", 12, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=10,command=lambda: self.frameInicio.lift())
         self.dashboard_text.place(x=30, y=325)
 
-        ## Btn Encomendas
-        self.manager_text = Button(self.sidebar, text='Encomendas', bg='#2E3133', font=("", 12, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=10)
+        ## Btn Clientes
+        self.manager_text = Button(self.sidebar, text='Clientes', bg='#2E3133', font=("", 12, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=10, command=lambda: self.frameClientes.lift())
         self.manager_text.place(x=160, y=325)
 
         ## Btn Produtos
         self.settings_text = Button(self.sidebar, text='Produtos', bg='#2E3133', font=("", 12, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=10,command=lambda: self.frameProdutos.lift())
         self.settings_text.place(x=30, y=375)
 
-        ## Btn Clientes
-        self.manager_text = Button(self.sidebar, text='Clientes', bg='#2E3133', font=("", 12, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=10)
+        ## Btn Encomendas
+        self.manager_text = Button(self.sidebar, text='Encomendas', bg='#2E3133', font=("", 12, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=10)
         self.manager_text.place(x=160, y=375)
 
         ## Btn Lucro
@@ -319,8 +332,9 @@ class Dashboard(Funcs):
             text.set_color('white')
 
         ## Frame 2 do body (Clientes)
-        self.bodyFrame2_Inicio = Frame(self.frameInicio, bg="#2E3133")
+        self.bodyFrame2_Inicio = Frame(self.frameInicio, bg="#2E3133",cursor='hand2')
         self.bodyFrame2_Inicio.place(x=28, y=475, width=310, height=220)
+        self.bodyFrame2_Inicio.bind("<Button-1>", lambda event: self.frameClientes.lift())
 
         ### Label a dizer Clientes
         self.labelFrame2_Inicio = Label(self.bodyFrame2_Inicio, bg="#2E3133", text="Clientes", font=("", 15, "bold"), fg='white')
@@ -332,9 +346,9 @@ class Dashboard(Funcs):
 
         ### Imagem
         ClientesImage = ImageTk.PhotoImage(Image.open('../imagens/clientes.png'))
-        self.logo = Label(self.bodyFrame2_Inicio, image=ClientesImage, bg='#2E3133')
-        self.logo.image = ClientesImage
-        self.logo.place(x=25, y=21)
+        self.prety_icon_clientes_Inicio = Label(self.bodyFrame2_Inicio, image=ClientesImage, bg='#2E3133')
+        self.prety_icon_clientes_Inicio.image = ClientesImage
+        self.prety_icon_clientes_Inicio.place(x=25, y=21)
 
         ###Numero de CLientes
         numClientes = self.contar_clientes()
@@ -357,9 +371,9 @@ class Dashboard(Funcs):
 
         ### Imagem
         ProdutosImage = ImageTk.PhotoImage(Image.open('../imagens/shopping-cart.png'))
-        self.logo = Label(self.bodyFrame3_Inicio, image=ProdutosImage, bg='#2E3133')
-        self.logo.image = ProdutosImage
-        self.logo.place(x=25, y=21)
+        self.prety_icon_produtos_Inicio = Label(self.bodyFrame3_Inicio, image=ProdutosImage, bg='#2E3133')
+        self.prety_icon_produtos_Inicio.image = ProdutosImage
+        self.prety_icon_produtos_Inicio.place(x=25, y=21)
 
         ###Numero de Produtos
         self.N_produtosFrame3_Inicio = Label(self.bodyFrame3_Inicio, bg="#2E3133", text=str(self.contar_Produtos()), font=("", 50, "bold"), fg='white')
@@ -379,9 +393,9 @@ class Dashboard(Funcs):
 
         ### Imagem
         EncomendasImage = ImageTk.PhotoImage(Image.open('../imagens/encomenda.png'))
-        self.logo = Label(self.bodyFrame4_Inicio, image=EncomendasImage, bg='#2E3133')
-        self.logo.image = EncomendasImage
-        self.logo.place(x=25, y=21)
+        self.prety_icon_encomendas_Inicio = Label(self.bodyFrame4_Inicio, image=EncomendasImage, bg='#2E3133')
+        self.prety_icon_encomendas_Inicio.image = EncomendasImage
+        self.prety_icon_encomendas_Inicio.place(x=25, y=21)
 
         ###Numero de Encomendas
         self.N_encomendasFrame4_Inicio = Label(self.bodyFrame4_Inicio, bg="#2E3133", text=int(self.contar_Encomendas()), font=("", 50, "bold"),fg='white')
@@ -418,12 +432,12 @@ class Dashboard(Funcs):
         self.produtos_lista.heading("#5", text="Imagem", anchor='w')
         self.produtos_lista.heading("#6", text="Ativo", anchor='w')
         self.produtos_lista.column("#0", width=5, stretch=NO)
-        self.produtos_lista.column("#1", width=100, stretch=NO)
+        self.produtos_lista.column("#1", width=75, stretch=NO)
         self.produtos_lista.column("#2", width=130, stretch=NO)
-        self.produtos_lista.column("#3", width=76, stretch=NO)
+        self.produtos_lista.column("#3", width=50, stretch=NO)
         self.produtos_lista.column("#4", width=150, stretch=NO)
-        self.produtos_lista.column("#5", width=75, stretch=NO)
-        self.produtos_lista.column("#6", width=120, stretch=NO)
+        self.produtos_lista.column("#5", width=175, stretch=NO)
+        self.produtos_lista.column("#6", width=73, stretch=NO)
         self.produtos_lista.place(relx=-0.009, rely=0, relwidth=1.001, relheight=1.05)
         self.produtos_lista.bind("<Double-1>", self.on_double_click)
         self.produtos_lista.bind("<Button-3>", self.on_right_click)
@@ -455,11 +469,11 @@ class Dashboard(Funcs):
         self.lineFrame3_Produtos = Label(self.bodyFrame3_Produtos, text="________________________", font=("", 10, "bold"), fg='#FD9C3A',bg='#2E3133')
         self.lineFrame3_Produtos.place(x=60, y=0)
 
-        ### Imagem
+        ### Imagem de um carrinho (para estetica)
         ProdutosImage = ImageTk.PhotoImage(Image.open('../imagens/shopping-cart.png'))
-        self.logo = Label(self.bodyFrame3_Produtos, image=ProdutosImage, bg='#2E3133')
-        self.logo.image = ProdutosImage
-        self.logo.place(x=20, y=16)
+        self.prety_icon_encomendas_produtos = Label(self.bodyFrame3_Produtos, image=ProdutosImage, bg='#2E3133')
+        self.prety_icon_encomendas_produtos.image = ProdutosImage
+        self.prety_icon_encomendas_produtos.place(x=20, y=16)
 
         ###Numero de Produtos
         self.N_produtosFrame3_Produtos = Label(self.bodyFrame3_Produtos, bg="#2E3133", text=int( self.contar_Produtos()),font=("", 50, "bold"), fg='white')
@@ -536,6 +550,87 @@ class Dashboard(Funcs):
         except FileNotFoundError:
             hora_erro = datetime.now().strftime("%H:%M:%S")
             print(f"Erro: Imagem não Encontrada - {hora_erro}")
+
+
+        ##############################################################################################################################################
+        ##################################################### FRAME Clientes #########################################################################
+        ##############################################################################################################################################
+
+        # Frame Clientes
+        self.frameClientes = Frame(self.window, bg="#17191F")
+        self.frameClientes.place(x=300, y=0, width=1366, height=768)
+
+        ## Label Clientes
+        self.heading_Clientes = Label(self.frameClientes, text="Clientes", font=("", 13, "bold"), fg='white',bg='#17191F')
+        self.heading_Clientes.place(x=25, y=50)
+
+        self.line_Clientes = Label(self.frameClientes, text="____________", font=("", 10, "bold"), fg='#FD9C3A',bg='#17191F')
+        self.line_Clientes.place(x=25, y=25)
+
+        ## Frame 1 da listagem dos Clientes
+        self.bodyFrame1_Clientes = Frame(self.frameClientes, bg="#2E3133")
+        self.bodyFrame1_Clientes.place(x=28, y=90, width=660, height=650)
+
+        ### Treeview que mostra todos os Produtos na base de dados
+        self.clientes_lista =tkinter.ttk.Treeview(self.bodyFrame1_Clientes, columns=("col1", "col2", "col3","col4","col5","col6"))
+        self.clientes_lista.heading("#0", text="")
+        self.clientes_lista.heading("#1", text="Cliente", anchor='w')
+        self.clientes_lista.heading("#2", text="Username", anchor='w')
+        self.clientes_lista.heading("#3", text="Nome", anchor='w')
+        self.clientes_lista.heading("#4", text="Contacto", anchor='w')
+        self.clientes_lista.heading("#5", text="Email", anchor='w')
+        self.clientes_lista.heading("#6", text="Password", anchor='w')
+        self.clientes_lista.column("#0", width=5, stretch=NO)
+        self.clientes_lista.column("#1", width=75, stretch=NO)
+        self.clientes_lista.column("#2", width=100, stretch=NO)
+        self.clientes_lista.column("#3", width=100, stretch=NO)
+        self.clientes_lista.column("#4", width=100, stretch=NO)
+        self.clientes_lista.column("#5", width=175, stretch=NO)
+        self.clientes_lista.column("#6", width=104, stretch=NO)
+        self.clientes_lista.place(relx=-0.009, rely=0, relwidth=1.001, relheight=1.05)
+        #self.clientes_lista.bind("<Double-1>", self.on_double_click)
+        #self.clientes_lista.bind("<Button-3>", self.on_right_click)
+
+        ### Sroll Bar
+        self.sroll = Scrollbar(self.bodyFrame1_Clientes, orient="vertical")
+        self.sroll.configure(command=self.clientes_lista.yview)
+        self.sroll.place(relx=0.94, rely=0.04, relwidth=0.051, relheight=0.96)
+        self.clientes_lista.configure(yscroll=self.sroll.set)
+        self.lista_clientes()
+
+        ### Decorar a Treeview
+        style = ttk.Style()
+        style.theme_use('clam')
+        style.map('Treeview',background=[('selected', '#FD9C3A'), ('!selected', '#2E3133')],foreground=[('selected', 'black'), ('!selected', 'white')],)
+        style.map('Treeview.Heading',foreground=[('selected', 'white')])
+        style.configure('Treeview.Heading', background="#FD9C3A")
+        style.configure('Treeview',rowheight=35)
+        style.configure('Treeview', fieldbackground='#2E3133')
+
+        ## Frame 2 (Quantidade de Clientes)
+        self.bodyFrame3_Clientes = Frame(self.frameClientes, bg="#2E3133")
+        self.bodyFrame3_Clientes.place(x=730, y=90, width=310, height=150)
+
+        ### Label a dizer Clientes
+        self.labelFrame3_Clientes = Label(self.bodyFrame3_Clientes, bg="#2E3133", text="Total de Produtos:",font=("", 15, "bold"), fg='white')
+        self.labelFrame3_Clientes.place(x=60, y=25)
+
+        ### Linha
+        self.lineFrame3_Produtos = Label(self.bodyFrame3_Clientes, text="________________________",font=("", 10, "bold"), fg='#FD9C3A', bg='#2E3133')
+        self.lineFrame3_Produtos.place(x=60, y=0)
+
+        ###Numero de Clientes
+        self.N_produtosFrame3_Clientes = Label(self.bodyFrame3_Clientes, bg="#2E3133", text=int(self.contar_clientes()),font=("", 50, "bold"), fg='white')
+        self.N_produtosFrame3_Clientes.place(x=115, y=65)
+
+        ## Frame 3 (Adicionar Produto)
+        self.bodyFrame4_Clientes = Frame(self.frameClientes, bg="#2E3133")
+        self.bodyFrame4_Clientes.place(x=730, y=285, width=310, height=455)
+
+        ###Imagem de uma pessoa (para estetica)
+        self.prety_icon_clientes_Clientes = Label(self.bodyFrame3_Clientes, image=ClientesImage, bg='#2E3133')
+        self.prety_icon_clientes_Clientes.image = ClientesImage
+        self.prety_icon_clientes_Clientes.place(x=25, y=21)
 
         #Puxar a janela do inicio para cima quando o programa abrir
         self.frameInicio.lift()
