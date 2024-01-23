@@ -218,6 +218,18 @@ class Funcs:
             self.clientes_lista.insert("", "end", values=i)
             self.clientes_lista.update()
         self.desconecta_bd()
+
+    def lista_clientes_encomendas(self):
+        self.clientes_encomendas_lista.delete(*self.clientes_encomendas_lista.get_children())
+        self.conecta_bd()
+        lista = self.cursor.execute(
+            "SELECT C.id_clientes, C.nome_cliente, COUNT(E.id_Encomendas) AS total_encomendas FROM Clientes C LEFT JOIN Encomendas E ON C.id_clientes = E.id_clientes GROUP BY C.id_clientes, C.username, C.nome_cliente ORDER BY total_encomendas DESC;")
+        for i in lista:
+            self.clientes_encomendas_lista.insert("", "end", values=i)
+            self.clientes_encomendas_lista.update()
+        self.desconecta_bd()
+
+
 class Dashboard(Funcs):
     def __init__(self, window):
         # janela principal
@@ -461,14 +473,6 @@ class Dashboard(Funcs):
         self.produtos_lista.configure(yscroll=self.sroll.set)
         self.lista_produtos()
 
-        ### Decorar a Treeview
-        style = ttk.Style()
-        style.theme_use('clam')
-        style.map('Treeview',background=[('selected', '#FD9C3A'), ('!selected', '#2E3133')],foreground=[('selected', 'black'), ('!selected', 'white')],)
-        style.map('Treeview.Heading',foreground=[('selected', 'white')])
-        style.configure('Treeview.Heading', background="#FD9C3A")
-        style.configure('Treeview',rowheight=35)
-
         ## Frame 2 (Quantidade de Produtos)
         self.bodyFrame3_Produtos = Frame(self.frameProdutos, bg="#2E3133")
         self.bodyFrame3_Produtos.place(x=730, y=90, width=310, height=150)
@@ -507,7 +511,7 @@ class Dashboard(Funcs):
         self.prety_icon_aviso_alt_Produtos = Label(self.bodyFrame4_Produtos, image=AvisoImagem, bg='#2E3133')
         self.prety_icon_aviso_alt_Produtos.image = AvisoImagem
         self.prety_icon_aviso_alt_Produtos.place(x=190, y=25)
-        self.prety_icon_aviso_alt_Produtos.bind("<Button-1>",lambda event: messagebox.showinfo("Aviso!", "Como usar a janela de alterar produtos:\n\n1)Para alterar um produto dê um click no produto que quer, depois se quiser auto preencher as entrys para saber que produto selecionou faça double click;\n2) Para adicionar um produto não pode ter nenhum produto selecionado;\n3) Para remover faça um click com o botão direito do rato"))
+        self.prety_icon_aviso_alt_Produtos.bind("<Button-1>",lambda event: messagebox.showinfo("Aviso!", "Como usar a janela de alterar produtos:\n\n1)Para alterar um produto dê um click no produto que quer, depois se quiser auto preencher as entrys para saber que produto selecionou faça double click;\n2) Para adicionar um produto não pode ter nenhum produto selecionado;\n3) Para remover faça um click com o botão direito do rato;"))
 
         ### Imagen de um certo para aceitar
         CertoImage = ImageTk.PhotoImage(Image.open('../imagens/aceitar.png'))
@@ -641,14 +645,36 @@ class Dashboard(Funcs):
         self.N_produtosFrame3_Clientes = Label(self.bodyFrame3_Clientes, bg="#2E3133", text=int(self.contar_clientes()),font=("", 50, "bold"), fg='white')
         self.N_produtosFrame3_Clientes.place(x=130, y=65)
 
-        ## Frame 3 (Adicionar Produto)
-        self.bodyFrame4_Clientes = Frame(self.frameClientes, bg="#2E3133")
-        self.bodyFrame4_Clientes.place(x=700, y=285, width=350, height=455)
-
         ###Imagem de uma pessoa (para estetica)
         self.prety_icon_clientes_Clientes = Label(self.bodyFrame3_Clientes, image=ClientesImage, bg='#2E3133')
         self.prety_icon_clientes_Clientes.image = ClientesImage
         self.prety_icon_clientes_Clientes.place(x=62, y=21)
+
+        ## Frame 3 (Adicionar Produto)
+        self.bodyFrame4_Clientes = Frame(self.frameClientes, bg="#2E3133")
+        self.bodyFrame4_Clientes.place(x=700, y=285, width=350, height=455)
+
+
+        ### Treeview que mostra todos os Produtos na base de dados
+        self.clientes_encomendas_lista =tkinter.ttk.Treeview(self.bodyFrame4_Clientes, columns=("col1", "col2", "col3","col4"))
+        self.clientes_encomendas_lista.heading("#0", text="")
+        self.clientes_encomendas_lista.heading("#1", text="Cliente", anchor='w')
+        self.clientes_encomendas_lista.heading("#2", text="Nome", anchor='w')
+        self.clientes_encomendas_lista.heading("#3", text="Encomendas", anchor='w')
+        self.clientes_encomendas_lista.column("#0", width=3, stretch=NO)
+        self.clientes_encomendas_lista.column("#1", width=50, stretch=NO)
+        self.clientes_encomendas_lista.column("#2", width=200, stretch=NO)
+        self.clientes_encomendas_lista.column("#3", width=92, stretch=NO)
+        self.clientes_encomendas_lista.place(relx=-0.009, rely=0, relwidth=1.001, relheight=1.05)
+        #self.clientes_lista.bind("<Double-1>", self.on_double_click)
+        #self.clientes_lista.bind("<Button-3>", self.on_right_click)
+
+        ### Sroll Bar
+        self.sroll = Scrollbar(self.bodyFrame4_Clientes, orient="vertical")
+        self.sroll.configure(command=self.clientes_encomendas_lista.yview)
+        self.sroll.place(relx=0.94, rely=0.06, relwidth=0.051, relheight=0.96)
+        self.clientes_encomendas_lista.configure(yscroll=self.sroll.set)
+        self.lista_clientes_encomendas()
 
         #Puxar a janela do inicio para cima quando o programa abrir
         self.frameInicio.lift()
