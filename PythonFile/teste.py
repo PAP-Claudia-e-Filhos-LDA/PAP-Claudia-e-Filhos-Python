@@ -108,10 +108,9 @@ class Funcs:
 
             if messagebox.askyesno("Confirmação", pergunta):
                 resultado = self.cursor.execute("UPDATE Produtos SET ativo = ? WHERE id_produto = ?;",(novo_estado, values[0]))
-
-        self.desconecta_bd()
-        self.lista_produtos()
-        self.produtos_lista.update()
+                self.desconecta_bd()
+                self.lista_produtos()
+                self.produtos_lista.update()
     def inserir_imagem(self):#guarda as imagens que foram uploadadas numa pasta com um nome especifico para serem tratadas pela,base de dados
         try:# verifica se esta alguma coisa selecionada. Se tiver vai fazer o id desse produto se nao vai continuar a partir do ultimo numero
             item = self.produtos_lista.item(self.produtos_lista.selection()[0], "values")[0]
@@ -209,7 +208,8 @@ class Funcs:
 
             self.lista_produtos()
             self.produtos_lista.update()
-    #função para Clintes
+
+    #funções para Clintes
     def lista_clientes(self):#faz o select que vai mostrar os clientes e as suas informações  que depois mete na treeview
         self.clientes_lista.delete(*self.clientes_lista.get_children())
         self.conecta_bd()
@@ -291,6 +291,13 @@ class Dashboard(Funcs):
         self.line_Inicio = Label(self.frameInicio, text="____________", font=("", 10, "bold"), fg='#FD9C3A', bg='#17191F')
         self.line_Inicio.place(x=25, y=25)
 
+        ##Icon de aviso para dizer oq a pagina faz (Pagina do Inicio)
+        AvisoImagem = ImageTk.PhotoImage(Image.open('../imagens/aviso.png'))
+        self.prety_icon_aviso_Inicio = Label(self.frameInicio, image=AvisoImagem, bg='#17191F')
+        self.prety_icon_aviso_Inicio.image = AvisoImagem
+        self.prety_icon_aviso_Inicio.place(x=120, y=45)
+        self.prety_icon_aviso_Inicio.bind("<Button-1>",lambda event: messagebox.showinfo("Aviso!", "Esta é a pagina inicial, apenas tem o importante. Para mais detalhes use os botões ao lado para ver as outras janelas."))
+
         ## Frame 1 do body (Grafico)
         self.bodyFrame1_Inicio = Frame(self.frameInicio, bg="#2E3133")
         self.bodyFrame1_Inicio.place(x=28, y=90, width=1010, height=350)
@@ -351,8 +358,7 @@ class Dashboard(Funcs):
         self.prety_icon_clientes_Inicio.place(x=25, y=21)
 
         ###Numero de CLientes
-        numClientes = self.contar_clientes()
-        self.N_clientesFrame2_Inicio = Label(self.bodyFrame2_Inicio, bg="#2E3133", text=str(numClientes), font=("", 50, "bold"), fg='white')
+        self.N_clientesFrame2_Inicio = Label(self.bodyFrame2_Inicio, bg="#2E3133", text=int(self.contar_clientes()), font=("", 50, "bold"), fg='white')
         self.N_clientesFrame2_Inicio.place(x=115, y=70)
 
         ## Frame 3 do body (Produtos)
@@ -418,6 +424,12 @@ class Dashboard(Funcs):
         self.line_Produtos = Label(self.frameProdutos, text="____________", font=("", 10, "bold"), fg='#FD9C3A', bg='#17191F')
         self.line_Produtos.place(x=25, y=25)
 
+        ##Icon de aviso para dizer oq a pagina faz (Pagina Produtos)
+        self.prety_icon_aviso_Produtos = Label(self.frameProdutos, image=AvisoImagem, bg='#17191F')
+        self.prety_icon_aviso_Produtos.image = AvisoImagem
+        self.prety_icon_aviso_Produtos.place(x=110, y=45)
+        self.prety_icon_aviso_Produtos.bind("<Button-1>",lambda event: messagebox.showinfo("Aviso!", "Esta é a pagina dos Produtos, aqui pode editar, adicionar, remover (ativar/desativar) os produtos que quiser."))
+
         ## Frame 1 da listagem de Produtos
         self.bodyFrame1_Produtos = Frame(self.frameProdutos, bg="#2E3133")
         self.bodyFrame1_Produtos.place(x=28, y=90, width=660, height=650)
@@ -479,7 +491,7 @@ class Dashboard(Funcs):
         self.N_produtosFrame3_Produtos = Label(self.bodyFrame3_Produtos, bg="#2E3133", text=int( self.contar_Produtos()),font=("", 50, "bold"), fg='white')
         self.N_produtosFrame3_Produtos.place(x=115, y=65)
 
-        ## Frame 4 (Adicionar Produto)
+        ## Frame 4 (Adicionar/Alteral/Remover Produto)
         self.bodyFrame4_Produtos = Frame(self.frameProdutos, bg="#2E3133")
         self.bodyFrame4_Produtos.place(x=730, y=285, width=310 , height=455)
 
@@ -490,6 +502,12 @@ class Dashboard(Funcs):
         ### Linha
         self.lineFrame4_Produtos = Label(self.bodyFrame4_Produtos, text="______________________",font=("", 10, "bold"), fg='#FD9C3A', bg='#2E3133')
         self.lineFrame4_Produtos.place(x=25, y=0)
+
+        ###Icon de aviso para explicar como alterar/adicionar/remover
+        self.prety_icon_aviso_alt_Produtos = Label(self.bodyFrame4_Produtos, image=AvisoImagem, bg='#2E3133')
+        self.prety_icon_aviso_alt_Produtos.image = AvisoImagem
+        self.prety_icon_aviso_alt_Produtos.place(x=190, y=25)
+        self.prety_icon_aviso_alt_Produtos.bind("<Button-1>",lambda event: messagebox.showinfo("Aviso!", "Como usar a janela de alterar produtos:\n\n1)Para alterar um produto dê um click no produto que quer, depois se quiser auto preencher as entrys para saber que produto selecionou faça double click;\n2) Para adicionar um produto não pode ter nenhum produto selecionado;\n3) Para remover faça um click com o botão direito do rato"))
 
         ### Imagen de um certo para aceitar
         CertoImage = ImageTk.PhotoImage(Image.open('../imagens/aceitar.png'))
@@ -569,7 +587,7 @@ class Dashboard(Funcs):
 
         ## Frame 1 da listagem dos Clientes
         self.bodyFrame1_Clientes = Frame(self.frameClientes, bg="#2E3133")
-        self.bodyFrame1_Clientes.place(x=28, y=90, width=660, height=650)
+        self.bodyFrame1_Clientes.place(x=28, y=90, width=630, height=650)
 
         ### Treeview que mostra todos os Produtos na base de dados
         self.clientes_lista =tkinter.ttk.Treeview(self.bodyFrame1_Clientes, columns=("col1", "col2", "col3","col4","col5","col6"))
@@ -581,12 +599,12 @@ class Dashboard(Funcs):
         self.clientes_lista.heading("#5", text="Email", anchor='w')
         self.clientes_lista.heading("#6", text="Password", anchor='w')
         self.clientes_lista.column("#0", width=5, stretch=NO)
-        self.clientes_lista.column("#1", width=75, stretch=NO)
+        self.clientes_lista.column("#1", width=50, stretch=NO)
         self.clientes_lista.column("#2", width=100, stretch=NO)
         self.clientes_lista.column("#3", width=100, stretch=NO)
         self.clientes_lista.column("#4", width=100, stretch=NO)
         self.clientes_lista.column("#5", width=175, stretch=NO)
-        self.clientes_lista.column("#6", width=104, stretch=NO)
+        self.clientes_lista.column("#6", width=97, stretch=NO)
         self.clientes_lista.place(relx=-0.009, rely=0, relwidth=1.001, relheight=1.05)
         #self.clientes_lista.bind("<Double-1>", self.on_double_click)
         #self.clientes_lista.bind("<Button-3>", self.on_right_click)
@@ -609,28 +627,28 @@ class Dashboard(Funcs):
 
         ## Frame 2 (Quantidade de Clientes)
         self.bodyFrame3_Clientes = Frame(self.frameClientes, bg="#2E3133")
-        self.bodyFrame3_Clientes.place(x=730, y=90, width=310, height=150)
+        self.bodyFrame3_Clientes.place(x=700, y=90, width=350, height=150)
 
         ### Label a dizer Clientes
-        self.labelFrame3_Clientes = Label(self.bodyFrame3_Clientes, bg="#2E3133", text="Total de Produtos:",font=("", 15, "bold"), fg='white')
-        self.labelFrame3_Clientes.place(x=60, y=25)
+        self.labelFrame3_Clientes = Label(self.bodyFrame3_Clientes, bg="#2E3133", text="Total de Clientes:",font=("", 15, "bold"), fg='white')
+        self.labelFrame3_Clientes.place(x=95, y=25)
 
         ### Linha
         self.lineFrame3_Produtos = Label(self.bodyFrame3_Clientes, text="________________________",font=("", 10, "bold"), fg='#FD9C3A', bg='#2E3133')
-        self.lineFrame3_Produtos.place(x=60, y=0)
+        self.lineFrame3_Produtos.place(x=95, y=0)
 
         ###Numero de Clientes
         self.N_produtosFrame3_Clientes = Label(self.bodyFrame3_Clientes, bg="#2E3133", text=int(self.contar_clientes()),font=("", 50, "bold"), fg='white')
-        self.N_produtosFrame3_Clientes.place(x=115, y=65)
+        self.N_produtosFrame3_Clientes.place(x=130, y=65)
 
         ## Frame 3 (Adicionar Produto)
         self.bodyFrame4_Clientes = Frame(self.frameClientes, bg="#2E3133")
-        self.bodyFrame4_Clientes.place(x=730, y=285, width=310, height=455)
+        self.bodyFrame4_Clientes.place(x=700, y=285, width=350, height=455)
 
         ###Imagem de uma pessoa (para estetica)
         self.prety_icon_clientes_Clientes = Label(self.bodyFrame3_Clientes, image=ClientesImage, bg='#2E3133')
         self.prety_icon_clientes_Clientes.image = ClientesImage
-        self.prety_icon_clientes_Clientes.place(x=25, y=21)
+        self.prety_icon_clientes_Clientes.place(x=62, y=21)
 
         #Puxar a janela do inicio para cima quando o programa abrir
         self.frameInicio.lift()
