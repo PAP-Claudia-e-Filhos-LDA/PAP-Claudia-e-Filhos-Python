@@ -38,7 +38,7 @@ class Funcs:
         return resultado[0]
     def contar_lucro(self):# função que vai buscar o lucro por mes
         self.conecta_bd()
-        resultado = self.cursor.execute("""SELECT strftime('%Y-%m', LE."data_encomenda") AS month, SUM(P."preco" * LE."quantidade") AS total_amount FROM "Linha_de_Encomenda" AS LE JOIN "Produtos" AS P ON LE."Produtos_id_produto" = P."id_produto" GROUP BY month ORDER BY month""").fetchall()
+        resultado = self.cursor.execute("""SELECT strftime('%Y-%m', E."data_encomenda") AS month, SUM(P."preco" * LE."quantidade") AS total_amount FROM "Encomendas" AS E JOIN "Linha_de_Encomenda" AS LE ON E."id_Encomendas" = LE."Encomendas_id_Encomendas" JOIN "Produtos" AS P ON LE."Produtos_id_produto" = P."id_produto" GROUP BY month ORDER BY month""").fetchall()
         self.desconecta_bd()
         return resultado
     def contar_Encomendas(self):  # função para contar o numero de encomendas
@@ -208,7 +208,6 @@ class Funcs:
 
             self.lista_produtos()
             self.produtos_lista.update()
-
     #funções para Clintes
     def lista_clientes(self):#faz o select que vai mostrar os clientes e as suas informações  que depois mete na treeview
         self.clientes_lista.delete(*self.clientes_lista.get_children())
@@ -218,7 +217,6 @@ class Funcs:
             self.clientes_lista.insert("", "end", values=i)
             self.clientes_lista.update()
         self.desconecta_bd()
-
     def lista_clientes_encomendas(self):
         self.clientes_encomendas_lista.delete(*self.clientes_encomendas_lista.get_children())
         self.conecta_bd()
@@ -589,9 +587,16 @@ class Dashboard(Funcs):
         self.line_Clientes = Label(self.frameClientes, text="____________", font=("", 10, "bold"), fg='#FD9C3A',bg='#17191F')
         self.line_Clientes.place(x=25, y=25)
 
+        #Icon de aviso para dizer oq a pagina faz (Pagina Clientes)
+        self.prety_icon_aviso_Clientes = Label(self.frameClientes, image=AvisoImagem, bg='#17191F')
+        self.prety_icon_aviso_Clientes.image = AvisoImagem
+        self.prety_icon_aviso_Clientes.place(x=100, y=45)
+        self.prety_icon_aviso_Clientes.bind("<Button-1>",lambda event: messagebox.showinfo("Aviso!", "Esta é a pagina dos Clientes, aqui podes ver os dados dos clientes e uma lista de quais são os melhores compradores."))
+
+
         ## Frame 1 da listagem dos Clientes
         self.bodyFrame1_Clientes = Frame(self.frameClientes, bg="#2E3133")
-        self.bodyFrame1_Clientes.place(x=28, y=90, width=630, height=650)
+        self.bodyFrame1_Clientes.place(x=28, y=90, width=660, height=650)
 
         ### Treeview que mostra todos os Produtos na base de dados
         self.clientes_lista =tkinter.ttk.Treeview(self.bodyFrame1_Clientes, columns=("col1", "col2", "col3","col4","col5","col6"))
@@ -608,10 +613,8 @@ class Dashboard(Funcs):
         self.clientes_lista.column("#3", width=100, stretch=NO)
         self.clientes_lista.column("#4", width=100, stretch=NO)
         self.clientes_lista.column("#5", width=175, stretch=NO)
-        self.clientes_lista.column("#6", width=97, stretch=NO)
+        self.clientes_lista.column("#6", width=127, stretch=NO)
         self.clientes_lista.place(relx=-0.009, rely=0, relwidth=1.001, relheight=1.05)
-        #self.clientes_lista.bind("<Double-1>", self.on_double_click)
-        #self.clientes_lista.bind("<Button-3>", self.on_right_click)
 
         ### Sroll Bar
         self.sroll = Scrollbar(self.bodyFrame1_Clientes, orient="vertical")
@@ -631,29 +634,42 @@ class Dashboard(Funcs):
 
         ## Frame 2 (Quantidade de Clientes)
         self.bodyFrame3_Clientes = Frame(self.frameClientes, bg="#2E3133")
-        self.bodyFrame3_Clientes.place(x=700, y=90, width=350, height=150)
+        self.bodyFrame3_Clientes.place(x=730, y=90, width=310, height=150)
 
         ### Label a dizer Clientes
         self.labelFrame3_Clientes = Label(self.bodyFrame3_Clientes, bg="#2E3133", text="Total de Clientes:",font=("", 15, "bold"), fg='white')
-        self.labelFrame3_Clientes.place(x=95, y=25)
+        self.labelFrame3_Clientes.place(x=60, y=25)
 
         ### Linha
         self.lineFrame3_Produtos = Label(self.bodyFrame3_Clientes, text="________________________",font=("", 10, "bold"), fg='#FD9C3A', bg='#2E3133')
-        self.lineFrame3_Produtos.place(x=95, y=0)
+        self.lineFrame3_Produtos.place(x=60, y=0)
 
         ###Numero de Clientes
         self.N_produtosFrame3_Clientes = Label(self.bodyFrame3_Clientes, bg="#2E3133", text=int(self.contar_clientes()),font=("", 50, "bold"), fg='white')
-        self.N_produtosFrame3_Clientes.place(x=130, y=65)
+        self.N_produtosFrame3_Clientes.place(x=115, y=65)
 
         ###Imagem de uma pessoa (para estetica)
         self.prety_icon_clientes_Clientes = Label(self.bodyFrame3_Clientes, image=ClientesImage, bg='#2E3133')
         self.prety_icon_clientes_Clientes.image = ClientesImage
-        self.prety_icon_clientes_Clientes.place(x=62, y=21)
+        self.prety_icon_clientes_Clientes.place(x=25, y=21)
 
-        ## Frame 3 (Adicionar Produto)
+        ## Frame 3 (Melhores Compradas)
         self.bodyFrame4_Clientes = Frame(self.frameClientes, bg="#2E3133")
-        self.bodyFrame4_Clientes.place(x=700, y=285, width=350, height=455)
+        self.bodyFrame4_Clientes.place(x=730, y=285, width=310, height=455)
 
+        ### Label a dizer Melhores Compradores
+        self.LabelMelhoresCompradores = Label(self.bodyFrame4_Clientes, bg="#2E3133", text="Melhores Compradores", font=("", 15, "bold"),fg='white')
+        self.LabelMelhoresCompradores.place(x=25, y=25)
+
+        ### Linha
+        self.lineFrame4_Clientes = Label(self.bodyFrame4_Clientes, text="______________________________",font=("", 10, "bold"), fg='#FD9C3A', bg='#2E3133')
+        self.lineFrame4_Clientes.place(x=25, y=0)
+
+        ### Icon de aviso para dizer oq a pagina faz (Pagina Clientes)
+        self.prety_icon_aviso_bestClientes = Label(self.bodyFrame4_Clientes, image=AvisoImagem, bg='#2E3133')
+        self.prety_icon_aviso_bestClientes.image = AvisoImagem
+        self.prety_icon_aviso_bestClientes.place(x=255, y=25)
+        self.prety_icon_aviso_bestClientes.bind("<Button-1>", lambda event: messagebox.showinfo("Aviso!","Esta é a lista dos melhores, podes ver o nome de cada clientes e a quantidade de encomendas que cada um fez."))
 
         ### Treeview que mostra todos os Produtos na base de dados
         self.clientes_encomendas_lista =tkinter.ttk.Treeview(self.bodyFrame4_Clientes, columns=("col1", "col2", "col3","col4"))
@@ -663,16 +679,15 @@ class Dashboard(Funcs):
         self.clientes_encomendas_lista.heading("#3", text="Encomendas", anchor='w')
         self.clientes_encomendas_lista.column("#0", width=3, stretch=NO)
         self.clientes_encomendas_lista.column("#1", width=50, stretch=NO)
-        self.clientes_encomendas_lista.column("#2", width=200, stretch=NO)
-        self.clientes_encomendas_lista.column("#3", width=92, stretch=NO)
-        self.clientes_encomendas_lista.place(relx=-0.009, rely=0, relwidth=1.001, relheight=1.05)
-        #self.clientes_lista.bind("<Double-1>", self.on_double_click)
-        #self.clientes_lista.bind("<Button-3>", self.on_right_click)
+        self.clientes_encomendas_lista.column("#2", width=150, stretch=NO)
+        self.clientes_encomendas_lista.column("#3", width=103, stretch=NO)
+        self.clientes_encomendas_lista.column("#4", width=1, stretch=NO)
+        self.clientes_encomendas_lista.place(relx=-0.009, rely=0.15, relwidth=1.001, relheight=0.87)
 
         ### Sroll Bar
         self.sroll = Scrollbar(self.bodyFrame4_Clientes, orient="vertical")
         self.sroll.configure(command=self.clientes_encomendas_lista.yview)
-        self.sroll.place(relx=0.94, rely=0.06, relwidth=0.051, relheight=0.96)
+        self.sroll.place(relx=0.94, rely=0.209, relwidth=0.051, relheight=0.79)
         self.clientes_encomendas_lista.configure(yscroll=self.sroll.set)
         self.lista_clientes_encomendas()
 
