@@ -217,16 +217,28 @@ class Funcs:
             self.clientes_lista.insert("", "end", values=i)
             self.clientes_lista.update()
         self.desconecta_bd()
-    def lista_clientes_encomendas(self):
+    def lista_clientes_encomendas(self):#função que mostra as pessoas que fizeram mais encomendas
         self.clientes_encomendas_lista.delete(*self.clientes_encomendas_lista.get_children())
         self.conecta_bd()
-        lista = self.cursor.execute(
-            "SELECT C.id_clientes, C.nome_cliente, COUNT(E.id_Encomendas) AS total_encomendas FROM Clientes C LEFT JOIN Encomendas E ON C.id_clientes = E.id_clientes GROUP BY C.id_clientes, C.username, C.nome_cliente ORDER BY total_encomendas DESC;")
+        lista = self.cursor.execute("SELECT C.id_clientes, C.nome_cliente, COUNT(E.id_Encomendas) AS total_encomendas FROM Clientes C LEFT JOIN Encomendas E ON C.id_clientes = E.id_clientes GROUP BY C.id_clientes, C.username, C.nome_cliente ORDER BY total_encomendas DESC;")
         for i in lista:
             self.clientes_encomendas_lista.insert("", "end", values=i)
             self.clientes_encomendas_lista.update()
         self.desconecta_bd()
-
+    #funções para as Encomendas
+    def lista_nome_clientes(self):
+        self.clientes_lista_encomendas.delete(*self.clientes_lista_encomendas.get_children())
+        self.conecta_bd()
+        lista = self.cursor.execute("SELECT nome_cliente FROM Clientes")
+        for i in lista:
+            self.clientes_lista_encomendas.insert("", "end", values=i)
+            self.clientes_lista_encomendas.update()
+        self.desconecta_bd()
+    def buscar_produtos(self):#cria um dicionario com os nomes dos produtos para por em radiobuttons para depois escolher
+        self.conecta_bd()
+        produtos  = self.cursor.execute("SELECT nome_produto FROM Produtos").fetchall()
+        self.desconecta_bd()
+        return [produto[0] for produto in produtos]
 
 class Dashboard(Funcs):
     def __init__(self, window):
@@ -241,6 +253,15 @@ class Dashboard(Funcs):
         myappid = 'mycompany.myproduct.subproduct.version'
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         self.window.iconbitmap(r'../imagens/favicon.ico')
+
+        # Decorar a Treeview
+        style = ttk.Style()
+        style.theme_use('clam')
+        style.map('Treeview',background=[('selected', '#FD9C3A'), ('!selected', '#2E3133')],foreground=[('selected', 'black'), ('!selected', 'white')],)
+        style.map('Treeview.Heading',foreground=[('selected', 'white')])
+        style.configure('Treeview.Heading', background="#FD9C3A")
+        style.configure('Treeview',rowheight=35)
+        style.configure('Treeview', fieldbackground='#2E3133')
 
         ##############################################################################################################################################
         ##################################################### Barra Lateral ###########################################################################
@@ -274,7 +295,7 @@ class Dashboard(Funcs):
         self.settings_text.place(x=30, y=375)
 
         ## Btn Encomendas
-        self.manager_text = Button(self.sidebar, text='Encomendas', bg='#2E3133', font=("", 12, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=10)
+        self.manager_text = Button(self.sidebar, text='Encomendas', bg='#2E3133', font=("", 12, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=10,command=lambda: self.frameEncomendas.lift())
         self.manager_text.place(x=160, y=375)
 
         ## Btn Lucro
@@ -310,7 +331,7 @@ class Dashboard(Funcs):
 
         ## Frame 1 do body (Grafico)
         self.bodyFrame1_Inicio = Frame(self.frameInicio, bg="#2E3133")
-        self.bodyFrame1_Inicio.place(x=28, y=90, width=1010, height=350)
+        self.bodyFrame1_Inicio.place(x=28.5, y=90, width=1011, height=350)
 
         ### Grafico
         #### Configs do Grafico
@@ -396,8 +417,9 @@ class Dashboard(Funcs):
         self.N_produtosFrame3_Inicio.place(x=115, y=70)
 
         ## Frame 4 do body (Encomendas)
-        self.bodyFrame4_Inicio = Frame(self.frameInicio, bg="#2E3133")
+        self.bodyFrame4_Inicio = Frame(self.frameInicio, bg="#2E3133", cursor='hand2')
         self.bodyFrame4_Inicio.place(x=730, y=475, width=310, height=220)
+        self.bodyFrame4_Inicio.bind("<Button-1>", lambda event: self.frameEncomendas.lift())
 
         ### Label a dizer Encomendas
         self.labelFrame4_Inicio = Label(self.bodyFrame4_Inicio, bg="#2E3133", text="Encomendas", font=("", 15, "bold"), fg='white')
@@ -623,15 +645,6 @@ class Dashboard(Funcs):
         self.clientes_lista.configure(yscroll=self.sroll.set)
         self.lista_clientes()
 
-        ### Decorar a Treeview
-        style = ttk.Style()
-        style.theme_use('clam')
-        style.map('Treeview',background=[('selected', '#FD9C3A'), ('!selected', '#2E3133')],foreground=[('selected', 'black'), ('!selected', 'white')],)
-        style.map('Treeview.Heading',foreground=[('selected', 'white')])
-        style.configure('Treeview.Heading', background="#FD9C3A")
-        style.configure('Treeview',rowheight=35)
-        style.configure('Treeview', fieldbackground='#2E3133')
-
         ## Frame 2 (Quantidade de Clientes)
         self.bodyFrame3_Clientes = Frame(self.frameClientes, bg="#2E3133")
         self.bodyFrame3_Clientes.place(x=730, y=90, width=310, height=150)
@@ -653,7 +666,7 @@ class Dashboard(Funcs):
         self.prety_icon_clientes_Clientes.image = ClientesImage
         self.prety_icon_clientes_Clientes.place(x=25, y=21)
 
-        ## Frame 3 (Melhores Compradas)
+        ## Frame 3 (Melhores Compradores)
         self.bodyFrame4_Clientes = Frame(self.frameClientes, bg="#2E3133")
         self.bodyFrame4_Clientes.place(x=730, y=285, width=310, height=455)
 
@@ -665,13 +678,13 @@ class Dashboard(Funcs):
         self.lineFrame4_Clientes = Label(self.bodyFrame4_Clientes, text="______________________________",font=("", 10, "bold"), fg='#FD9C3A', bg='#2E3133')
         self.lineFrame4_Clientes.place(x=25, y=0)
 
-        ### Icon de aviso para dizer oq a pagina faz (Pagina Clientes)
+        ### Icon de aviso para dizer oq a pagina faz (Pagina Melhores compradores)
         self.prety_icon_aviso_bestClientes = Label(self.bodyFrame4_Clientes, image=AvisoImagem, bg='#2E3133')
         self.prety_icon_aviso_bestClientes.image = AvisoImagem
         self.prety_icon_aviso_bestClientes.place(x=255, y=25)
         self.prety_icon_aviso_bestClientes.bind("<Button-1>", lambda event: messagebox.showinfo("Aviso!","Esta é a lista dos melhores, podes ver o nome de cada clientes e a quantidade de encomendas que cada um fez."))
 
-        ### Treeview que mostra todos os Produtos na base de dados
+        ### Treeview que mostra os clientes com mais encomendas
         self.clientes_encomendas_lista =tkinter.ttk.Treeview(self.bodyFrame4_Clientes, columns=("col1", "col2", "col3","col4"))
         self.clientes_encomendas_lista.heading("#0", text="")
         self.clientes_encomendas_lista.heading("#1", text="Cliente", anchor='w')
@@ -691,6 +704,76 @@ class Dashboard(Funcs):
         self.clientes_encomendas_lista.configure(yscroll=self.sroll.set)
         self.lista_clientes_encomendas()
 
+        ##############################################################################################################################################
+        ##################################################### Frame Encomendas #######################################################################
+        ##############################################################################################################################################
+
+        # Frame Encomendas
+        self.frameEncomendas = Frame(self.window, bg="#17191F")
+        self.frameEncomendas.place(x=300, y=0, width=1366, height=768)
+
+        ## Label Encomendas
+        self.heading_Encomendas = Label(self.frameEncomendas, text="Encomendas", font=("", 13, "bold"), fg='white',bg='#17191F')
+        self.heading_Encomendas.place(x=25, y=50)
+
+        ## Linha
+        self.line_Clientes = Label(self.frameEncomendas, text="____________", font=("", 10, "bold"), fg='#FD9C3A',bg='#17191F')
+        self.line_Clientes.place(x=25, y=25)
+
+        ## Frame (Tudo)
+        self.frameListaClientes = Frame(self.frameEncomendas, bg="#2E3133")
+        self.frameListaClientes.place(x=28, y=90, width=1012, height=650)
+
+        ### Label a dizer fazer encomendas
+        self.LabelFazer_Encomenda = Label(self.frameListaClientes, bg="#2E3133", text="Fazer Encomenda", font=("", 15, "bold"),fg='white')
+        self.LabelFazer_Encomenda.place(x=25, y=25)
+
+        ### Linha
+        self.line_FazerEncomenda = Label(self.frameListaClientes, text="______________________________",font=("", 10, "bold"), fg='#FD9C3A', bg='#2E3133')
+        self.line_FazerEncomenda.place(x=25, y=0)
+
+        ### Treeview que mostra os clientes para selecionar para a compra
+        self.clientes_lista_encomendas =tkinter.ttk.Treeview(self.frameListaClientes, columns=("col1"))
+        self.clientes_lista_encomendas.heading("#0", text="")
+        self.clientes_lista_encomendas.heading("#1", text="Cliente", anchor='w')
+        self.clientes_lista_encomendas.column("#0", width=3, stretch=NO)
+        self.clientes_lista_encomendas.column("#1", width=125, stretch=NO)
+        self.clientes_lista_encomendas.place(relx=0.04, rely=0.15, relwidth=0.13, relheight=0.8)
+
+        ### Sroll Bar
+        self.sroll = Scrollbar(self.clientes_lista_encomendas, orient="vertical")
+        self.sroll.configure(command=self.clientes_lista_encomendas.yview)
+        self.sroll.place(relx=0.8, rely=0.05, relwidth=0.2, relheight=0.95)
+        self.clientes_lista_encomendas.configure(yscroll=self.sroll.set)
+        self.lista_nome_clientes()
+
+        ### Label a dizer Selecionar Cliente
+        self.heading_select_clientes = Label(self.frameListaClientes, text="Selecionar Cliente", font=("", 13, "bold"), fg='white',bg='#2E3133')
+        self.heading_select_clientes.place(x=35, y=75)
+
+        ### Frame para tratar dos produtos
+        self.frameProdutos_Encomendas = Frame(self.frameListaClientes, bg="#2E3133",highlightbackground="white", highlightthickness=1)
+        self.frameProdutos_Encomendas.place(x=198, y=100, width=225, height=523)
+
+        produtos = self.buscar_produtos()
+        self.check_var_list = []
+        self.quantidade_entries = []
+
+        for i, produto_nome in enumerate(produtos):
+            check_var = IntVar()
+            check_button = Checkbutton(self.frameProdutos_Encomendas, font=("", 10, "bold"), fg='white', bg='#2E3133',text=produto_nome, variable=check_var ,selectcolor='black')
+            check_button.grid(row=i, column=0, sticky="w")
+
+            quantidade_entry = Entry(self.frameProdutos_Encomendas, width=5, bg='#2E3133')
+            quantidade_entry.grid(row=i, column=1, padx=(5, 0))
+
+            self.quantidade_entries.append(quantidade_entry)
+
+            self.check_var_list.append(check_var)
+            self.check_var_list.append(check_var)
+
+            self.frameProdutos_Encomendas.update_idletasks()
+
         #Puxar a janela do inicio para cima quando o programa abrir
         self.frameInicio.lift()
 
@@ -700,4 +783,4 @@ def win():
     window.mainloop()
 
 if __name__ == "__main__":
-    win()   
+    win()
