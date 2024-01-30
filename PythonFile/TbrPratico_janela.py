@@ -681,10 +681,8 @@ class application(Func):
             self.frame_checkbuttons.update_idletasks()
 
         self.canvas_produtos.config(scrollregion=self.canvas_produtos.bbox("all"))
-
         self.scroll_canvas = Scrollbar(self.nova_encomenda, orient="vertical", command=self.canvas_produtos.yview)
         self.scroll_canvas.place(relx=0.65, rely=0.2, relwidth=0.06, relheight=0.50)
-
         self.canvas_produtos.configure(yscrollcommand=self.scroll_canvas.set)
     def janela_lista_encomendas(self):
         nomes_produtos = self.obter_nome_produto()

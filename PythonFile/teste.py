@@ -738,7 +738,7 @@ class Dashboard(Funcs):
         self.clientes_lista_encomendas.heading("#1", text="Cliente", anchor='w')
         self.clientes_lista_encomendas.column("#0", width=3, stretch=NO)
         self.clientes_lista_encomendas.column("#1", width=125, stretch=NO)
-        self.clientes_lista_encomendas.place(relx=0.04, rely=0.15, relwidth=0.13, relheight=0.8)
+        self.clientes_lista_encomendas.place(relx=0.04, rely=0.15, relwidth=0.13, relheight=0.81)
 
         ### Sroll Bar
         self.sroll = Scrollbar(self.clientes_lista_encomendas, orient="vertical")
@@ -752,31 +752,44 @@ class Dashboard(Funcs):
         self.heading_select_clientes.place(x=35, y=75)
 
         ### Frame para tratar dos produtos
-        self.frameProdutos_Encomendas = Frame(self.frameListaClientes, bg="#2E3133",highlightbackground="white", highlightthickness=1)
-        self.frameProdutos_Encomendas.place(x=198, y=100, width=225, height=523)
+        self.frameProdutos_Encomendas = Frame(self.frameListaClientes, bg="#2E3133")
+        self.frameProdutos_Encomendas.place(x=198, y=100, width=200, height=523)
 
+        ### Label a dizer Selecionar Produtos
+        self.heading_select_prod = Label(self.frameListaClientes, text="Selecionar Produtos", font=("", 13, "bold"), fg='white',bg='#2E3133')
+        self.heading_select_prod.place(x=198, y=75)
+
+        ### Criação de Frames e Canvas para dar scroll
+        self.canvas_produtos = Canvas(self.frameProdutos_Encomendas, bg="#2E3133")
+        self.canvas_produtos.place(relx=0, rely=0, relwidth=1, relheight=1)
+        self.frame_checkbuttons = Frame(self.canvas_produtos, bg='#2E3133')
+        self.frame_checkbuttons.place(relx=0.1, rely=0.2, relwidth=0.95, relheight=0.50)
+        self.canvas_produtos.create_window((0, 0), window=self.frame_checkbuttons, anchor="nw")
+
+        #Variaveis para ajudar no ciclo
         produtos = self.buscar_produtos()
         self.check_var_list = []
         self.quantidade_entries = []
 
+        # for que faz as entrys e os checkbuttons de acordo com o numero de produtos que existe
         for i, produto_nome in enumerate(produtos):
             check_var = IntVar()
-            check_button = Checkbutton(self.frameProdutos_Encomendas, font=("", 10, "bold"), fg='white', bg='#2E3133',text=produto_nome, variable=check_var ,selectcolor='black')
+            check_button = Checkbutton(self.frame_checkbuttons, text=produto_nome, variable=check_var, bg='#2E3133',fg='white', selectcolor='black')
             check_button.grid(row=i, column=0, sticky="w")
-
-            quantidade_entry = Entry(self.frameProdutos_Encomendas, width=5, bg='#2E3133')
+            quantidade_entry = Entry(self.frame_checkbuttons, width=5, bg='#2E3133', fg='white')
             quantidade_entry.grid(row=i, column=1, padx=(5, 0))
-
             self.quantidade_entries.append(quantidade_entry)
-
             self.check_var_list.append(check_var)
-            self.check_var_list.append(check_var)
+            self.frame_checkbuttons.update_idletasks()
 
-            self.frameProdutos_Encomendas.update_idletasks()
+        ### Scroll bar
+        self.canvas_produtos.config(scrollregion=self.canvas_produtos.bbox("all"))
+        self.scroll_canvas = Scrollbar(self.frameProdutos_Encomendas, orient="vertical",command=self.canvas_produtos.yview)
+        self.scroll_canvas.place(relx=0.89, rely=0, relwidth=0.1, relheight=1)
+        self.canvas_produtos.configure(yscrollcommand=self.scroll_canvas.set)
 
         #Puxar a janela do inicio para cima quando o programa abrir
         self.frameInicio.lift()
-
 def win():
     window = Tk()
     Dashboard(window)
