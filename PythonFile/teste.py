@@ -252,11 +252,33 @@ class Funcs:
                 self.nome_erro_encomendas.place(x=25, y=60)
         self.obter_quantidades()
         self.obter_checkbox_status()
+
+
     def obter_checkbox_status(self):#verifica as checkboxes que estao selecionadas e ver se são fritos ou congelados
         return [1 if check_var.get() == 1 else 0 for check_var in self.check_var_list]
     def obter_quantidades(self):#serve para saber os valores que estavam nas entrys e saber as quantidades (em duzias de cada produto)
-        quantidades = [int(entry.get()) if entry.get() else 0 for entry in self.quantidade_entries]
-        if all(quantidade == 0 for quantidade in quantidades):
+        quantidades = []
+        erros_indices = []
+
+        if not hasattr(self, 'nome_erro_produtos'):
+            self.nome_erro_produtos = Label(self.frameListaClientes, bg="#2E3133", text=" ",font=("", 8, "bold"), fg='red')
+            self.nome_erro_produtos.place(x=198, y=60)
+
+        for i, entry in enumerate(self.quantidade_entries):
+            entry_value = entry.get()
+            if entry_value.isdigit():
+                quantidades.append(int(entry_value))
+            else:
+                erros_indices.append(i)
+                print(f"Erro: A entrada do produto deve conter apenas números.")
+                entry.config(fg='red')
+                if not hasattr(self, 'nome_erro_produtos'):
+                    self.nome_erro_produtos = Label(self.frameListaClientes, bg="#2E3133",text="Erro ao escrever quantidades", font=("", 8, "bold"), fg='red')
+                    self.nome_erro_produtos.place(x=198, y=60)
+                else:
+                    self.nome_erro_produtos.config(text='Erro ao escrever quantidades') ##corrgir nao aparecer mensagem correta
+
+        if erros_indices:
             if not hasattr(self, 'nome_erro_produtos'):
                 self.nome_erro_produtos = Label(self.frameListaClientes, bg="#2E3133",text="Nenhum Produto Selecionado", font=("", 8, "bold"), fg='red')
                 self.nome_erro_produtos.place(x=198, y=60)
@@ -264,6 +286,7 @@ class Funcs:
                 self.nome_erro_produtos.config(text='Nenhum Produto Selecionado')
         else:
             self.nome_erro_produtos.config(text='')
+        self.nome_erro_produtos.update_idletasks()
 
 class Dashboard(Funcs):
     def __init__(self, window):
