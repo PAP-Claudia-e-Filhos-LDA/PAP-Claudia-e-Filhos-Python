@@ -208,7 +208,7 @@ class Funcs:
 
             self.lista_produtos()
             self.produtos_lista.update()
-    #funções para Clintes
+    #funções para Clientes
     def lista_clientes(self):#faz o select que vai mostrar os clientes e as suas informações  que depois mete na treeview
         self.clientes_lista.delete(*self.clientes_lista.get_children())
         self.conecta_bd()
@@ -239,6 +239,31 @@ class Funcs:
         produtos  = self.cursor.execute("SELECT nome_produto FROM Produtos").fetchall()
         self.desconecta_bd()
         return [produto[0] for produto in produtos]
+    def fazer_encomendas(self):
+        try:
+            selecionado = self.clientes_lista_encomendas.selection()[0]
+            values = self.clientes_lista_encomendas.item(selecionado)['values']
+            valor_selecionado = values[0] if values else None
+            if hasattr(self, 'nome_erro_encomendas'):
+                self.nome_erro_encomendas.config(text="")
+        except Exception as e:
+            if not hasattr(self, 'nome_erro_encomendas'):
+                self.nome_erro_encomendas = Label(self.frameListaClientes, bg="#2E3133",text="Nenhum Cliente Selecionado", font=("", 8, "bold"), fg='red')
+                self.nome_erro_encomendas.place(x=25, y=60)
+        self.obter_quantidades()
+        self.obter_checkbox_status()
+    def obter_checkbox_status(self):#verifica as checkboxes que estao selecionadas e ver se são fritos ou congelados
+        return [1 if check_var.get() == 1 else 0 for check_var in self.check_var_list]
+    def obter_quantidades(self):#serve para saber os valores que estavam nas entrys e saber as quantidades (em duzias de cada produto)
+        quantidades = [int(entry.get()) if entry.get() else 0 for entry in self.quantidade_entries]
+        if all(quantidade == 0 for quantidade in quantidades):
+            if not hasattr(self, 'nome_erro_produtos'):
+                self.nome_erro_produtos = Label(self.frameListaClientes, bg="#2E3133",text="Nenhum Produto Selecionado", font=("", 8, "bold"), fg='red')
+                self.nome_erro_produtos.place(x=198, y=60)
+            else:
+                self.nome_erro_produtos.config(text='Nenhum Produto Selecionado')
+        else:
+            self.nome_erro_produtos.config(text='')
 
 class Dashboard(Funcs):
     def __init__(self, window):
@@ -777,6 +802,7 @@ class Dashboard(Funcs):
             check_button = Checkbutton(self.frame_checkbuttons, text=produto_nome, variable=check_var, bg='#2E3133',fg='white', selectcolor='black')
             check_button.grid(row=i, column=0, sticky="w")
             quantidade_entry = Entry(self.frame_checkbuttons, width=5, bg='#2E3133', fg='white')
+            quantidade_entry.insert(0, "0")
             quantidade_entry.grid(row=i, column=1, padx=(5, 0))
             self.quantidade_entries.append(quantidade_entry)
             self.check_var_list.append(check_var)
@@ -787,6 +813,12 @@ class Dashboard(Funcs):
         self.scroll_canvas = Scrollbar(self.frameProdutos_Encomendas, orient="vertical",command=self.canvas_produtos.yview)
         self.scroll_canvas.place(relx=0.89, rely=0, relwidth=0.1, relheight=1)
         self.canvas_produtos.configure(yscrollcommand=self.scroll_canvas.set)
+
+        ### Imagem de certo para confirmar
+        self.aceitar_encomenda = Label(self.frameListaClientes, image=CertoImage, bg='#2E3133')
+        self.aceitar_encomenda.image = CertoImage
+        self.aceitar_encomenda.place(x=260, y=25)
+        self.aceitar_encomenda.bind("<Button-1>", lambda event: self.fazer_encomendas())
 
         #Puxar a janela do inicio para cima quando o programa abrir
         self.frameInicio.lift()
