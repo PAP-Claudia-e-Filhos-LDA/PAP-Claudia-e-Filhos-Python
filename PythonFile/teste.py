@@ -241,22 +241,43 @@ class Funcs:
         return [produto[0] for produto in produtos]
     def fazer_encomendas(self):
         try:
+            quantidades = self.obter_quantidades()
+            fritos_congelados = self.obter_checkbox_status()
+
             selecionado = self.clientes_lista_encomendas.selection()[0]
-            values = self.clientes_lista_encomendas.item(selecionado)['values']
+            values = self.clientes_lista_encomendas.item(selecionado).get('values')
             valor_selecionado = values[0] if values else None
+
             if hasattr(self, 'nome_erro_encomendas'):
                 self.nome_erro_encomendas.config(text="")
         except Exception as e:
             if not hasattr(self, 'nome_erro_encomendas'):
-                self.nome_erro_encomendas = Label(self.frameListaClientes, bg="#2E3133",text="Nenhum Cliente Selecionado", font=("", 8, "bold"), fg='red')
+                self.nome_erro_encomendas = Label(self.frameListaClientes,bg="#2E3133",text="Nenhum Cliente Selecionado",font=("", 8, "bold"),fg='red')
                 self.nome_erro_encomendas.place(x=25, y=60)
-        self.obter_quantidades()
-        self.obter_checkbox_status()
+        self.conecta_bd()
+        resultado_encomendas = self.cursor.execute("SELECT COUNT(DISTINCT id_Encomendas) FROM Encomendas;").fetchone()
+        if resultado_encomendas:
+            try:
+                id_encomenda = resultado_encomendas[0] + 1
+                self.cursor.execute('SELECT id_clientes FROM Clientes WHERE nome_cliente = ?', (selecionado,))
+                id_clientes = self.cursor.fetchone()
+
+                if id_clientes:
+                    data_encomenda = datetime.now().strftime("%Y-%m-%d")
+                    self.cursor.execute("INSERT INTO Encomendas VALUES (?, ?, ?)",(id_encomenda, id_cliente, data_encomenda))
+                    for i, quantidade in enumerate(quantidades):
+                        if int(quantidade) > 0:
+                            self.cursor.execute(id_encomenda, i + 1, quantidade,fritos_congelados[i])
+                    self.desconecta_bd()
+            except Exception as e:
+                hora_erro = datetime.now().strftime("%H:%M:%S")
+                print(f"Ocorreu um erro ao tentar adicionar/atualizar algo na base dados - {hora_erro}")
+            print(selecionado)
     def obter_checkbox_status(self):#verifica as checkboxes que estao selecionadas e ver se são fritos ou congelados
         return [1 if check_var.get() == 1 else 0 for check_var in self.check_var_list]
     def obter_quantidades(self):#serve para saber os valores que estavam nas entrys e saber as quantidades (em duzias de cada produto)
         quantidades = []
-        erros_indices = []
+        erros = []
 
         if not hasattr(self, 'nome_erro_produtos'):
             self.nome_erro_produtos = Label(self.frameListaClientes, bg="#2E3133", text=" ", font=("", 8, "bold"),fg='red')
@@ -268,19 +289,20 @@ class Funcs:
             if valor == '':
                 valor = 0
             elif not valor.isdigit():
-                erros_indices.append(i)
+                erros.append(i)
                 entry.config(fg='red')
                 quantidades = []
                 break
             quantidades.append(int(valor))
 
-        if erros_indices: #Se estiver algum dos erros aparece a mensagem e limpa a lista
+        if erros: #Se estiver algum dos erros aparece a mensagem e limpa a lista
             self.nome_erro_produtos.config(text='Erro ao escrever quantidades')
             quantidades = []
         elif all(qty == 0 for qty in quantidades):
             self.nome_erro_produtos.config(text='Todas as quantidades são zero')
         else:
             self.nome_erro_produtos.config(text='')
+        return quantidades
 
 
 class Dashboard(Funcs):
