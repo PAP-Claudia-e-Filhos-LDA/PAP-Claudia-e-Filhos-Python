@@ -66,9 +66,9 @@ class Func:
 
         for i, quantidade in enumerate(quantidades):
             if int(quantidade) > 0:
-                self.inserir_linha_encomenda(id_encomenda, id_cliente, i + 1, quantidade,fritos_congelados[i])
+                self.inserir_linha_encomenda(id_encomenda, i + 1, quantidade,fritos_congelados[i])
         self.desconecta_bd()
-    def inserir_linha_encomenda(self, id_encomenda, id_cliente, id_produto, quantidade,fritos_congelados):#insere na tabela principal da base de dados usa o mesmo id_encomenda para adicionar varios produtos
+    def inserir_linha_encomenda(self, id_encomenda, id_produto, quantidade,fritos_congelados):#insere na tabela principal da base de dados usa o mesmo id_encomenda para adicionar varios produtos
         self.conecta_bd()
         data_encomenda = datetime.now().strftime("%Y-%m-%d")
         self.cursor.execute(

@@ -46,6 +46,43 @@ class Funcs:
         resultado = self.cursor.execute("SELECT COUNT(*) FROM Encomendas").fetchone()
         self.desconecta_bd()
         return resultado[0]
+
+    def grafico(self):
+        ### Grafico
+        #### Configs do Grafico
+        fig, ax = plt.subplots(figsize=(8, 4), tight_layout=True, facecolor='#2E3133')
+        ax.set_facecolor('#2E3133')
+        ax.spines['bottom'].set_color('white')
+        ax.spines['top'].set_color('white')
+        ax.spines['right'].set_color('white')
+        ax.spines['left'].set_color('white')
+
+        #### Valores do Grafico
+        lucros = self.contar_lucro()
+        mes, total = zip(*lucros)
+
+        #### Cores da escala
+        ax.xaxis.label.set_color('white')
+        ax.yaxis.label.set_color('white')
+        for text in ax.get_xticklabels() + ax.get_yticklabels():
+            text.set_color('white')
+
+        #### Cores dos eixos
+        ax.bar(mes, total, color='#FD9C3A', )
+        ax.set_xlabel('Mês', color='white')
+        ax.set_ylabel('Total ', color='white')
+        ax.set_title('Total por Mês', color='white')
+
+        #### Escreve os meses
+        ax.set_xticks(range(len(mes)))
+        ax.set_xticklabels(mes, rotation=45, ha='right')
+
+        #### Por o Grafico no BodyFrame1
+        canvas = FigureCanvasTkAgg(fig, master=self.bodyFrame1_Inicio)
+        canvas.draw()
+        canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=1)
+        for text in ax.get_xticklabels() + ax.get_yticklabels():
+            text.set_color('white')
     # funções para os Produtos
     def lista_produtos(self):#faz o select que vai mostrar os produtos e as suas informações e que depois mete na treeview
         self.produtos_lista.delete(*self.produtos_lista.get_children())
@@ -239,40 +276,58 @@ class Funcs:
         produtos  = self.cursor.execute("SELECT nome_produto FROM Produtos").fetchall()
         self.desconecta_bd()
         return [produto[0] for produto in produtos]
-    def fazer_encomendas(self):
+    def fazer_encomendas(self):#fazer a encomenda e um monte de verificações antes
         try:
-            quantidades = self.obter_quantidades()
-            fritos_congelados = self.obter_checkbox_status()
+            quantidades = self.obter_quantidades() #array com as quantidades que estão nas entrys
+            fritos_congelados = self.obter_checkbox_status()#verificar se é frito ou congelado
 
+            #isto é para saber o nome do cliente que esta selcionado
             selecionado = self.clientes_lista_encomendas.selection()[0]
             values = self.clientes_lista_encomendas.item(selecionado).get('values')
             valor_selecionado = values[0] if values else None
 
-            if hasattr(self, 'nome_erro_encomendas'):
+            if hasattr(self, 'nome_erro_encomendas'): #fazer a mensagem de erro caso algo aconteça
                 self.nome_erro_encomendas.config(text="")
+
         except Exception as e:
-            if not hasattr(self, 'nome_erro_encomendas'):
+            if not hasattr(self, 'nome_erro_encomendas'):#mudar o texto da mensagem de erro
                 self.nome_erro_encomendas = Label(self.frameListaClientes,bg="#2E3133",text="Nenhum Cliente Selecionado",font=("", 8, "bold"),fg='red')
                 self.nome_erro_encomendas.place(x=25, y=60)
-        self.conecta_bd()
-        resultado_encomendas = self.cursor.execute("SELECT COUNT(DISTINCT id_Encomendas) FROM Encomendas;").fetchone()
-        if resultado_encomendas:
-            try:
-                id_encomenda = resultado_encomendas[0] + 1
-                self.cursor.execute('SELECT id_clientes FROM Clientes WHERE nome_cliente = ?', (selecionado,))
-                id_clientes = self.cursor.fetchone()
 
+        self.conecta_bd()
+
+        self.cursor.execute('SELECT id_clientes FROM Clientes WHERE nome_cliente = ?', (valor_selecionado,)).fetchone()[0]
+
+
+        if valor_selecionado:
+            try:
+                resultado_encomendas = self.cursor.execute("SELECT COUNT(DISTINCT id_Encomendas) FROM Encomendas;").fetchone()
+                id_encomenda = resultado_encomendas[0] + 1
+                self.cursor.execute('SELECT id_clientes FROM Clientes WHERE nome_cliente = ?',(valor_selecionado,))  # usa o nome do cliente para saber o id dele
+                id_clientes = self.cursor.fetchone()[0]
+
+                self.desconecta_bd()
                 if id_clientes:
+                    if all(qty == 0 for qty in quantidades) and all(str(qty).isdigit() for qty in quantidades):
+                        raise Exception
                     data_encomenda = datetime.now().strftime("%Y-%m-%d")
-                    self.cursor.execute("INSERT INTO Encomendas VALUES (?, ?, ?)",(id_encomenda, id_cliente, data_encomenda))
+                    self.conecta_bd()
+                    self.cursor.execute("INSERT INTO Encomendas (`id_Encomendas`, `id_clientes`, `data_encomenda`) VALUES (?, ?, ?);",(id_encomenda, id_clientes, data_encomenda))
+                    self.desconecta_bd()
+                    self.conecta_bd()
                     for i, quantidade in enumerate(quantidades):
                         if int(quantidade) > 0:
-                            self.cursor.execute(id_encomenda, i + 1, quantidade,fritos_congelados[i])
+                            self.cursor.execute("""INSERT INTO Linha_de_Encomenda (Encomendas_id_Encomendas, Produtos_id_produto, congelados, quantidade) VALUES (?, ?, ?, ?);""",(id_encomenda, i +1, fritos_congelados[i], quantidade))
+                            self.conn.commit()
                     self.desconecta_bd()
-            except Exception as e:
+
+                    self.N_encomendasFrame4_Inicio.config(text=int(self.contar_Encomendas()))
+                    self.lista_clientes_encomendas()
+                    self.grafico()
+
+            except Exception:
                 hora_erro = datetime.now().strftime("%H:%M:%S")
                 print(f"Ocorreu um erro ao tentar adicionar/atualizar algo na base dados - {hora_erro}")
-            print(selecionado)
     def obter_checkbox_status(self):#verifica as checkboxes que estao selecionadas e ver se são fritos ou congelados
         return [1 if check_var.get() == 1 else 0 for check_var in self.check_var_list]
     def obter_quantidades(self):#serve para saber os valores que estavam nas entrys e saber as quantidades (em duzias de cada produto)
@@ -398,41 +453,7 @@ class Dashboard(Funcs):
         self.bodyFrame1_Inicio = Frame(self.frameInicio, bg="#2E3133")
         self.bodyFrame1_Inicio.place(x=28.5, y=90, width=1011, height=350)
 
-        ### Grafico
-        #### Configs do Grafico
-        fig, ax = plt.subplots(figsize=(8, 4), tight_layout=True, facecolor='#2E3133')
-        ax.set_facecolor('#2E3133')
-        ax.spines['bottom'].set_color('white')
-        ax.spines['top'].set_color('white')
-        ax.spines['right'].set_color('white')
-        ax.spines['left'].set_color('white')
-
-        #### Valores do Grafico
-        lucros = self.contar_lucro()
-        mes, total = zip(*lucros)
-
-        #### Cores da escala
-        ax.xaxis.label.set_color('white')
-        ax.yaxis.label.set_color('white')
-        for text in ax.get_xticklabels() + ax.get_yticklabels():
-            text.set_color('white')
-
-        #### Cores dos eixos
-        ax.bar(mes, total, color='#FD9C3A',)
-        ax.set_xlabel('Mês', color='white')
-        ax.set_ylabel('Total ', color='white')
-        ax.set_title('Total por Mês', color='white')
-
-        #### Escreve os meses
-        ax.set_xticks(range(len(mes)))
-        ax.set_xticklabels(mes, rotation=45, ha='right')
-
-        #### Por o Grafico no BodyFrame1
-        canvas = FigureCanvasTkAgg(fig, master=self.bodyFrame1_Inicio)
-        canvas.draw()
-        canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=1)
-        for text in ax.get_xticklabels() + ax.get_yticklabels():
-            text.set_color('white')
+        self.grafico()
 
         ## Frame 2 do body (Clientes)
         self.bodyFrame2_Inicio = Frame(self.frameInicio, bg="#2E3133",cursor='hand2')
