@@ -38,7 +38,7 @@ class Funcs:
         return resultado[0]
     def contar_lucro(self):# função que vai buscar o lucro por mes
         self.conecta_bd()
-        resultado = self.cursor.execute("""SELECT strftime('%Y-%m', E."data_encomenda") AS month, SUM(P."preco" * LE."quantidade") AS total_amount FROM "Encomendas" AS E JOIN "Linha_de_Encomenda" AS LE ON E."id_Encomendas" = LE."Encomendas_id_Encomendas" JOIN "Produtos" AS P ON LE."Produtos_id_produto" = P."id_produto" GROUP BY month ORDER BY month""").fetchall()
+        resultado = self.cursor.execute("""SELECT strftime('%Y-%m', E."data_encomenda") AS month, SUM(LE."preco_produto" * LE."quantidade") AS total_amount FROM "Encomendas" AS E JOIN "Linha_de_Encomenda" AS LE ON E."id_Encomendas" = LE."Encomendas_id_Encomendas" GROUP BY month ORDER BY month;""").fetchall()
         self.desconecta_bd()
         return resultado
     def contar_Encomendas(self):  # função para contar o numero de encomendas
@@ -46,8 +46,7 @@ class Funcs:
         resultado = self.cursor.execute("SELECT COUNT(*) FROM Encomendas").fetchone()
         self.desconecta_bd()
         return resultado[0]
-
-    def grafico(self):
+    def grafico(self):#faz o grafico com o lucro mensal
         ### Grafico
         #### Configs do Grafico
         fig, ax = plt.subplots(figsize=(8, 4), tight_layout=True, facecolor='#2E3133')
@@ -123,7 +122,7 @@ class Funcs:
             self.logo.config(image=ImagemProduto)
             self.logo.image = ImagemProduto
             self.nova_imagem.config(text="Adicione uma imagem")
-    def Limpar(self):# ffunção que server para limpar as entrys e a seleção da treeview
+    def Limpar(self):# função que server para limpar as entrys e a seleção da treeview
             resposta = messagebox.askyesno("Confirmação", "Limpar todas as Entrys?")
             if resposta:
                 self.Textbox_Produtos.delete(0, END)
@@ -147,7 +146,10 @@ class Funcs:
                 resultado = self.cursor.execute("UPDATE Produtos SET ativo = ? WHERE id_produto = ?;",(novo_estado, values[0]))
                 self.desconecta_bd()
                 self.lista_produtos()
+
+                #atualiza as treeviews
                 self.produtos_lista.update()
+                self.produtos_encomendas()
     def inserir_imagem(self):#guarda as imagens que foram uploadadas numa pasta com um nome especifico para serem tratadas pela,base de dados
         try:# verifica se esta alguma coisa selecionada. Se tiver vai fazer o id desse produto se nao vai continuar a partir do ultimo numero
             item = self.produtos_lista.item(self.produtos_lista.selection()[0], "values")[0]
@@ -263,7 +265,7 @@ class Funcs:
             self.clientes_encomendas_lista.update()
         self.desconecta_bd()
     #funções para as Encomendas
-    def lista_nome_clientes(self):
+    def lista_nome_clientes(self):# Função que faz uma lista apenas com os nomes dos clientes para depois selecionar e fazer uma encomenda
         self.clientes_lista_encomendas.delete(*self.clientes_lista_encomendas.get_children())
         self.conecta_bd()
         lista = self.cursor.execute("SELECT nome_cliente FROM Clientes")
@@ -273,9 +275,28 @@ class Funcs:
         self.desconecta_bd()
     def buscar_produtos(self):#cria um dicionario com os nomes dos produtos para por em radiobuttons para depois escolher
         self.conecta_bd()
-        produtos  = self.cursor.execute("SELECT nome_produto FROM Produtos").fetchall()
+        produtos  = self.cursor.execute("SELECT nome_produto FROM Produtos WHERE ativo = 1").fetchall()
         self.desconecta_bd()
         return [produto[0] for produto in produtos]
+    def produtos_encomendas(self):
+        for widget in self.frame_checkbuttons.winfo_children():
+            widget.destroy()
+        # Variaveis para ajudar no ciclo
+        produtos = self.buscar_produtos()
+        self.check_var_list = []
+        self.quantidade_entries = []
+
+        # for que faz as entrys e os checkbuttons de acordo com o numero de produtos que existe
+        for i, produto_nome in enumerate(produtos):
+            check_var = IntVar()
+            check_button = Checkbutton(self.frame_checkbuttons, text=produto_nome, variable=check_var, bg='#2E3133',fg='white', selectcolor='black')
+            check_button.grid(row=i, column=0, sticky="w")
+            quantidade_entry = Entry(self.frame_checkbuttons, width=5, bg='#2E3133', fg='white')
+            quantidade_entry.insert(0, "0")
+            quantidade_entry.grid(row=i, column=1, padx=(5, 0))
+            self.quantidade_entries.append(quantidade_entry)
+            self.check_var_list.append(check_var)
+            self.frame_checkbuttons.update_idletasks()
     def fazer_encomendas(self):#fazer a encomenda e um monte de verificações antes
         try:
             quantidades = self.obter_quantidades() #array com as quantidades que estão nas entrys
@@ -295,35 +316,36 @@ class Funcs:
                 self.nome_erro_encomendas.place(x=25, y=60)
 
         self.conecta_bd()
-
-        self.cursor.execute('SELECT id_clientes FROM Clientes WHERE nome_cliente = ?', (valor_selecionado,)).fetchone()[0]
-
-
         if valor_selecionado:
             try:
                 resultado_encomendas = self.cursor.execute("SELECT COUNT(DISTINCT id_Encomendas) FROM Encomendas;").fetchone()
-                id_encomenda = resultado_encomendas[0] + 1
+                id_encomenda = resultado_encomendas[0] + 1 #vai buscar o numero de encomendas e adiciona 1
                 self.cursor.execute('SELECT id_clientes FROM Clientes WHERE nome_cliente = ?',(valor_selecionado,))  # usa o nome do cliente para saber o id dele
                 id_clientes = self.cursor.fetchone()[0]
 
                 self.desconecta_bd()
                 if id_clientes:
                     if all(qty == 0 for qty in quantidades) and all(str(qty).isdigit() for qty in quantidades):
-                        raise Exception
+                        raise Exception #se houver algum erro nas quantidades não vai adicionar encomenda e sai do try
+
+                    self.conecta_bd()
                     data_encomenda = datetime.now().strftime("%Y-%m-%d")
-                    self.conecta_bd()
-                    self.cursor.execute("INSERT INTO Encomendas (`id_Encomendas`, `id_clientes`, `data_encomenda`) VALUES (?, ?, ?);",(id_encomenda, id_clientes, data_encomenda))
+                    self.cursor.execute("INSERT INTO Encomendas (`id_Encomendas`, `id_clientes`, `data_encomenda`) VALUES (?, ?, ?);",(id_encomenda, id_clientes, data_encomenda)) #cria uma encomenda para um cliente no dia em que esta a ser feito
                     self.desconecta_bd()
+
                     self.conecta_bd()
-                    for i, quantidade in enumerate(quantidades):
-                        if int(quantidade) > 0:
+                    for i, quantidade in enumerate(quantidades): #vai adicionar na linha de encomenda os produtos , as quantidades e se esta congelado ou frito
+                        if int(quantidade) > 0:#para nao adicionar produtos vazios só adiciona aqueles que têm mais de 0 na quantidade
                             self.cursor.execute("""INSERT INTO Linha_de_Encomenda (Encomendas_id_Encomendas, Produtos_id_produto, congelados, quantidade) VALUES (?, ?, ?, ?);""",(id_encomenda, i +1, fritos_congelados[i], quantidade))
                             self.conn.commit()
                     self.desconecta_bd()
 
-                    self.N_encomendasFrame4_Inicio.config(text=int(self.contar_Encomendas()))
-                    self.lista_clientes_encomendas()
-                    self.grafico()
+                    #widgets que vao ser atualizados
+                    self.N_encomendasFrame4_Inicio.config(text=int(self.contar_Encomendas())) #Numero de encomendas
+                    self.lista_clientes_encomendas() #Numero de Encomendas por Clientes
+                    self.grafico() #Grafico do Lucro
+                    
+                    #Talvez adicionar mais!!!!!
 
             except Exception:
                 hora_erro = datetime.now().strftime("%H:%M:%S")
@@ -358,7 +380,6 @@ class Funcs:
         else:
             self.nome_erro_produtos.config(text='')
         return quantidades
-
 
 class Dashboard(Funcs):
     def __init__(self, window):
@@ -852,28 +873,12 @@ class Dashboard(Funcs):
         self.frame_checkbuttons.place(relx=0.1, rely=0.2, relwidth=0.95, relheight=0.50)
         self.canvas_produtos.create_window((0, 0), window=self.frame_checkbuttons, anchor="nw")
 
-        #Variaveis para ajudar no ciclo
-        produtos = self.buscar_produtos()
-        self.check_var_list = []
-        self.quantidade_entries = []
-
-        # for que faz as entrys e os checkbuttons de acordo com o numero de produtos que existe
-        for i, produto_nome in enumerate(produtos):
-            check_var = IntVar()
-            check_button = Checkbutton(self.frame_checkbuttons, text=produto_nome, variable=check_var, bg='#2E3133',fg='white', selectcolor='black')
-            check_button.grid(row=i, column=0, sticky="w")
-            quantidade_entry = Entry(self.frame_checkbuttons, width=5, bg='#2E3133', fg='white')
-            quantidade_entry.insert(0, "0")
-            quantidade_entry.grid(row=i, column=1, padx=(5, 0))
-            self.quantidade_entries.append(quantidade_entry)
-            self.check_var_list.append(check_var)
-            self.frame_checkbuttons.update_idletasks()
-
         ### Scroll bar
         self.canvas_produtos.config(scrollregion=self.canvas_produtos.bbox("all"))
         self.scroll_canvas = Scrollbar(self.frameProdutos_Encomendas, orient="vertical",command=self.canvas_produtos.yview)
         self.scroll_canvas.place(relx=0.89, rely=0, relwidth=0.1, relheight=1)
         self.canvas_produtos.configure(yscrollcommand=self.scroll_canvas.set)
+        self.produtos_encomendas()
 
         ### Imagem de certo para confirmar
         self.aceitar_encomenda = Label(self.frameListaClientes, image=CertoImage, bg='#2E3133')
