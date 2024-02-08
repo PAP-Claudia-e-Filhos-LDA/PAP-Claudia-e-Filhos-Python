@@ -316,8 +316,7 @@ class Funcs:
                 self.nome_erro_encomendas.place(x=25, y=60)
 
         self.conecta_bd()
-        if valor_selecionado:
-            try:
+        try:
                 resultado_encomendas = self.cursor.execute("SELECT COUNT(DISTINCT id_Encomendas) FROM Encomendas;").fetchone()
                 id_encomenda = resultado_encomendas[0] + 1 #vai buscar o numero de encomendas e adiciona 1
                 self.cursor.execute('SELECT id_clientes FROM Clientes WHERE nome_cliente = ?',(valor_selecionado,))  # usa o nome do cliente para saber o id dele
@@ -347,7 +346,7 @@ class Funcs:
                     
                     #Talvez adicionar mais!!!!!
 
-            except Exception:
+        except Exception:
                 hora_erro = datetime.now().strftime("%H:%M:%S")
                 print(f"Ocorreu um erro ao tentar adicionar/atualizar algo na base dados - {hora_erro}")
     def obter_checkbox_status(self):#verifica as checkboxes que estao selecionadas e ver se são fritos ou congelados
@@ -885,6 +884,8 @@ class Dashboard(Funcs):
         self.aceitar_encomenda.image = CertoImage
         self.aceitar_encomenda.place(x=260, y=25)
         self.aceitar_encomenda.bind("<Button-1>", lambda event: self.fazer_encomendas())
+
+        ### Treeview para ver as encomendas
 
         #Puxar a janela do inicio para cima quando o programa abrir
         self.frameInicio.lift()
