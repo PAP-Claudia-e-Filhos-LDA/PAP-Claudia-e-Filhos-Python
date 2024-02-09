@@ -47,6 +47,8 @@ class Funcs:
         self.desconecta_bd()
         return resultado[0]
     def grafico(self):#faz o grafico com o lucro mensal
+        for widget in self.bodyFrame1_Inicio.winfo_children():
+            widget.destroy()
         ### Grafico
         #### Configs do Grafico
         fig, ax = plt.subplots(figsize=(8, 4), tight_layout=True, facecolor='#2E3133')
@@ -339,16 +341,27 @@ class Funcs:
                             self.conn.commit()
                     self.desconecta_bd()
 
-                    #widgets que vao ser atualizados
-                    self.N_encomendasFrame4_Inicio.config(text=int(self.contar_Encomendas())) #Numero de encomendas
-                    self.lista_clientes_encomendas() #Numero de Encomendas por Clientes
-                    self.grafico() #Grafico do Lucro
-                    
-                    #Talvez adicionar mais!!!!!
+                    #Limpar as entrys
+                    self.clientes_lista_encomendas.selection_remove(self.clientes_lista_encomendas.selection())
+                    if hasattr(self, 'nome_erro_encomendas') or hasattr(self, 'nome_erro_produtos'):
+                        self.nome_erro_produtos.config(text='')
+                        self.nome_erro_encomendas.config(text="")
+                    for entry in self.quantidade_entries:
+                        entry.delete(0, 'end')
+                        entry.insert(0, "0")
+                    for check_var in self.check_var_list:
+                        check_var.set(0)
 
         except Exception:
                 hora_erro = datetime.now().strftime("%H:%M:%S")
                 print(f"Ocorreu um erro ao tentar adicionar/atualizar algo na base dados - {hora_erro}")
+
+        # widgets que vao ser atualizados
+        self.N_encomendasFrame4_Inicio.config(text=int(self.contar_Encomendas()))  # Numero de encomendas
+        self.lista_clientes_encomendas()  # Numero de Encomendas por Clientes
+        self.grafico()  # Grafico do Lucro
+
+        # Talvez adicionar mais!!!!!
     def obter_checkbox_status(self):#verifica as checkboxes que estao selecionadas e ver se são fritos ou congelados
         return [1 if check_var.get() == 1 else 0 for check_var in self.check_var_list]
     def obter_quantidades(self):#serve para saber os valores que estavam nas entrys e saber as quantidades (em duzias de cada produto)
