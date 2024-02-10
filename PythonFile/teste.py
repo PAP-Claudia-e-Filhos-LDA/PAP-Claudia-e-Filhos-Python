@@ -16,7 +16,9 @@ import os
 #17191F -> Cinzento Escuro
 #2E3133 -> Cinzento Claro
 
-#TENTAR FAZER FUNÇÃO QUE ORDENE OS ITENS DA TREEVIEW'''
+#TENTAR FAZER FUNÇÃO QUE ORDENE OS ITENS DA TREEVIEW
+#FAZER CAMPO PARA SABER SE A ENCOMENDA FOI ENTREGUE OU NÃO E METEDO DE PAGAMENTO '''
+
 class Funcs:
 
     #funções para o ecra principal
@@ -360,6 +362,7 @@ class Funcs:
         self.N_encomendasFrame4_Inicio.config(text=int(self.contar_Encomendas()))  # Numero de encomendas
         self.lista_clientes_encomendas()  # Numero de Encomendas por Clientes
         self.grafico()  # Grafico do Lucro
+        self.mostrar_encomendas() #tabela das encomendaas
 
         # Talvez adicionar mais!!!!!
     def obter_checkbox_status(self):#verifica as checkboxes que estao selecionadas e ver se são fritos ou congelados
@@ -392,7 +395,47 @@ class Funcs:
         else:
             self.nome_erro_produtos.config(text='')
         return quantidades
+    def mostrar_encomendas(self):
+        for widget in self.frame_encomendas.winfo_children():
+            widget.destroy()
 
+        self.conecta_bd()
+        #Vai buscar o ID, Cliente e Data de todas as encomendas
+        dados_encomendas = self.cursor.execute("SELECT Encomendas.id_Encomendas AS 'ID Encomenda', Clientes.nome_cliente AS 'Nome do Cliente', Encomendas.data_encomenda AS 'Data' FROM Encomendas JOIN Clientes ON Encomendas.id_clientes = Clientes.id_clientes ORDER BY Encomendas.id_Encomendas DESC;").fetchall()
+        self.desconecta_bd()
+
+        # Exibir os dados obtidos do banco de dados
+        for linha_encomenda, info_encomenda in enumerate(dados_encomendas):
+            id_encomenda, nome_cliente, data_encomenda = info_encomenda
+            produtos_quantidades = [] #tupula para depois por os produtos , quantidades e estado
+            total_encomenda = 0 #variavel para o preço total de caada encomenda
+
+            self.conecta_bd()
+            #Vai buscar os produtos de cada encomenda
+            dados_produtos = self.cursor.execute("SELECT Produtos.nome_produto, Linha_de_Encomenda.quantidade, CASE WHEN Produtos.nome_produto LIKE '%Rissol%' OR Produtos.nome_produto LIKE '%Rissois%' OR Produtos.nome_produto LIKE '%Croquete%' OR Produtos.nome_produto LIKE '%Trouxa%' THEN Linha_de_Encomenda.congelados ELSE '' END AS congelados, Produtos.preco FROM Linha_de_Encomenda JOIN Produtos ON Linha_de_Encomenda.Produtos_id_produto = Produtos.id_produto WHERE Linha_de_Encomenda.Encomendas_id_Encomendas = ?;", (id_encomenda,)).fetchall()
+            self.desconecta_bd()
+
+            #Calcula o preço total da encomenda e preenche  a tupula com os dados corretos
+            for produtos in dados_produtos: #isto vai repetir por cada produto que existe
+                produto, quantidade, congelados, preco = produtos
+                produtos_quantidades.append((produto, quantidade, congelados))
+                total_encomenda += quantidade * preco
+
+            #Junta tudo numa string
+            encomenda_info = f"Encomenda: {id_encomenda}\nCliente: {nome_cliente}\nData: {data_encomenda}\nProdutos:\n"
+            for produto, quantidade, congelados, preco in dados_produtos:
+                tipo_congelamento = "Congelado" if congelados else "Não Congelado"
+                congelados_str = "" if congelados == "" else f", {tipo_congelamento}"
+                encomenda_info += f"- {produto} ({quantidade} unidades{congelados_str}, Preço: {preco:.2f}€)\n"
+            encomenda_info += f"Total da Encomenda: {total_encomenda:.2f}€"
+
+            #Faz labels com a string criada
+            Encomenda = Label(self.frame_encomendas, text=encomenda_info, font=("", 12), fg='white', bg='#2E3133',justify='left',)
+            Encomenda.grid(row=linha_encomenda, column=0, padx=5, pady=5, sticky='w', columnspan=3)
+
+        #Atualizar a frame
+        self.canvas_encomendas.update_idletasks()
+        self.canvas_encomendas.config(scrollregion=self.canvas_encomendas.bbox("all"))
 class Dashboard(Funcs):
     def __init__(self, window):
         # janela principal
@@ -898,7 +941,28 @@ class Dashboard(Funcs):
         self.aceitar_encomenda.place(x=260, y=25)
         self.aceitar_encomenda.bind("<Button-1>", lambda event: self.fazer_encomendas())
 
-        ### Treeview para ver as encomendas
+        ### Frame para tratar das encomendas
+        self.ver_encomendas = Frame(self.frameListaClientes, bg="#2E3133")
+        self.ver_encomendas.place(x=420, y=100, width=550, height=523)
+
+        ### Label a dizer Encomendas
+        self.heading_select_encomendas = Label(self.frameListaClientes, text="Encomendas", font=("", 13, "bold"),fg='white', bg='#2E3133')
+        self.heading_select_encomendas.place(x=420, y=75)
+
+        ### Criação de Frames e Canvas para dar scroll
+        self.canvas_encomendas = Canvas(self.ver_encomendas, bg="#2E3133")
+        self.canvas_encomendas.place(relx=0, rely=0, relwidth=1, relheight=1)
+        self.frame_encomendas = Frame(self.canvas_encomendas, bg='#2E3133')
+        self.frame_encomendas.place(relx=0.1, rely=0.2, relwidth=0.95, relheight=0.50)
+
+        ### Scroll bar
+        self.canvas_encomendas.create_window((0, 0), window=self.frame_encomendas, anchor="nw")
+        self.canvas_encomendas.config(scrollregion=self.canvas_encomendas.bbox("all"))
+        self.scroll_canvas_encomendas = Scrollbar(self.ver_encomendas, orient="vertical",command=self.canvas_encomendas.yview)
+        self.scroll_canvas_encomendas.place(relx=0.95, rely=0, relwidth=0.05, relheight=1)
+        self.canvas_encomendas.configure(yscrollcommand=self.scroll_canvas_encomendas.set)
+        self.mostrar_encomendas()
+
 
         #Puxar a janela do inicio para cima quando o programa abrir
         self.frameInicio.lift()
