@@ -17,7 +17,9 @@ import os
 #2E3133 -> Cinzento Claro
 
 #TENTAR FAZER FUNÇÃO QUE ORDENE OS ITENS DA TREEVIEW
-#FAZER CAMPO PARA SABER SE A ENCOMENDA FOI ENTREGUE OU NÃO E METEDO DE PAGAMENTO '''
+#FAZER CAMPO PARA SABER SE A ENCOMENDA FOI ENTREGUE OU NÃO E METEDO DE PAGAMENTO 
+#FAZER CENA PARA ORDENAR AS ENCOMENDAS (MES E CENAS ASSIM)
+#ADICIONAR CAMPO PARA SABER SE PODE SER FRITO OU NAO'''
 
 class Funcs:
 
@@ -398,8 +400,8 @@ class Funcs:
     def mostrar_encomendas(self):
         for widget in self.frame_encomendas.winfo_children():
             widget.destroy()
-
         self.conecta_bd()
+
         #Vai buscar o ID, Cliente e Data de todas as encomendas
         dados_encomendas = self.cursor.execute("SELECT Encomendas.id_Encomendas AS 'ID Encomenda', Clientes.nome_cliente AS 'Nome do Cliente', Encomendas.data_encomenda AS 'Data' FROM Encomendas JOIN Clientes ON Encomendas.id_clientes = Clientes.id_clientes ORDER BY Encomendas.id_Encomendas DESC;").fetchall()
         self.desconecta_bd()
@@ -422,12 +424,13 @@ class Funcs:
                 total_encomenda += quantidade * preco
 
             #Junta tudo numa string
-            encomenda_info = f"Encomenda: {id_encomenda}\nCliente: {nome_cliente}\nData: {data_encomenda}\nProdutos:\n"
-            for produto, quantidade, congelados, preco in dados_produtos:
-                tipo_congelamento = "Congelado" if congelados else "Não Congelado"
-                congelados_str = "" if congelados == "" else f", {tipo_congelamento}"
-                encomenda_info += f"- {produto} ({quantidade} unidades{congelados_str}, Preço: {preco:.2f}€)\n"
-            encomenda_info += f"Total da Encomenda: {total_encomenda:.2f}€"
+            encomenda_info = "Encomenda: " + str(id_encomenda) + "\nCliente: " + str(nome_cliente) + "\nData: " + str(data_encomenda) + "\nProdutos:\n"
+            for produto, quantidade, congelados, preco in dados_produtos: #vai adicionar á encomenda_info a informação de cada produto
+                tipo_congelamento = "Congelado" if congelados == 0 else "Fritos"
+                congelados_str = "" if congelados == "" else ", " + tipo_congelamento
+                unidade_medida = "duzias" if any(keyword in produto for keyword in ["Rissol", "Rissois", "Croquete", "Trouxa"]) else "unidades"
+                encomenda_info += "- " + str(produto) + " (" + str(quantidade) + " " + unidade_medida + congelados_str + ", Preço: {:.2f}€)\n".format(preco)
+            encomenda_info += "Total da Encomenda: {:.2f}€".format(total_encomenda)
 
             #Faz labels com a string criada
             Encomenda = Label(self.frame_encomendas, text=encomenda_info, font=("", 12), fg='white', bg='#2E3133',justify='left',)
@@ -436,6 +439,7 @@ class Funcs:
         #Atualizar a frame
         self.canvas_encomendas.update_idletasks()
         self.canvas_encomendas.config(scrollregion=self.canvas_encomendas.bbox("all"))
+
 class Dashboard(Funcs):
     def __init__(self, window):
         # janela principal
@@ -882,6 +886,12 @@ class Dashboard(Funcs):
         self.line_Clientes = Label(self.frameEncomendas, text="____________", font=("", 10, "bold"), fg='#FD9C3A',bg='#17191F')
         self.line_Clientes.place(x=25, y=25)
 
+        #Aviso de Como funciona a encomenda
+        self.prety_icon_aviso_Encomendas = Label(self.frameEncomendas, image=AvisoImagem, bg='#17191F')
+        self.prety_icon_aviso_Encomendas.image = AvisoImagem
+        self.prety_icon_aviso_Encomendas.place(x=130, y=45)
+        self.prety_icon_aviso_Encomendas.bind("<Button-1>",lambda event: messagebox.showinfo("Aviso!", "Esta é a pagina das Encomendas, aqui podes ver e fazer as encomendas todas."))
+
         ## Frame (Tudo)
         self.frameListaClientes = Frame(self.frameEncomendas, bg="#2E3133")
         self.frameListaClientes.place(x=28, y=90, width=1012, height=650)
@@ -893,6 +903,12 @@ class Dashboard(Funcs):
         ### Linha
         self.line_FazerEncomenda = Label(self.frameListaClientes, text="______________________________",font=("", 10, "bold"), fg='#FD9C3A', bg='#2E3133')
         self.line_FazerEncomenda.place(x=25, y=0)
+
+        #Aviso de Como funciona a encomenda
+        self.prety_icon_aviso_fazer_Encomendas = Label(self.frameListaClientes, image=AvisoImagem, bg='#2E3133')
+        self.prety_icon_aviso_fazer_Encomendas.image = AvisoImagem
+        self.prety_icon_aviso_fazer_Encomendas.place(x=220, y=25)
+        self.prety_icon_aviso_fazer_Encomendas.bind("<Button-1>",lambda event: messagebox.showinfo("Aviso!", "Como fazer uma encomenda:\n\n1)Selecione um cliente;\n2)Depois para adicionar um produto só tem de mudar a quantidade dele para algo maior que 0;\n3)Se quiser esse produto frito ou congelado é so marcar a caixa ao lado desse mesmo produto (só rissois seram fritos e congelados);\n4)Depois é confirmar a encomenda e ela vai aparecer na janela ao lado."))
 
         ### Treeview que mostra os clientes para selecionar para a compra
         self.clientes_lista_encomendas =tkinter.ttk.Treeview(self.frameListaClientes, columns=("col1"))
@@ -963,6 +979,28 @@ class Dashboard(Funcs):
         self.canvas_encomendas.configure(yscrollcommand=self.scroll_canvas_encomendas.set)
         self.mostrar_encomendas()
 
+
+        ##############################################################################################################################################
+        ##################################################### Frame Lucro ############################################################################
+        ##############################################################################################################################################
+
+        #Frame do Lucro
+        self.frameLucro = Frame(self.window, bg="#17191F")
+        self.frameLucro.place(x=300, y=0, width=1366, height=768)
+
+        ## Label Encomendas
+        self.heading_Lucro = Label(self.frameLucro, text="Lucro e Estatísticas", font=("", 13, "bold"), fg='white',bg='#17191F')
+        self.heading_Lucro.place(x=25, y=50)
+
+        ## Linha
+        self.line_Clientes = Label(self.frameLucro, text="___________________________", font=("", 10, "bold"), fg='#FD9C3A',bg='#17191F')
+        self.line_Clientes.place(x=25, y=25)
+
+        # Aviso de Como funciona a encomenda
+        self.prety_icon_aviso_Encomendas = Label(self.frameLucro, image=AvisoImagem, bg='#17191F')
+        self.prety_icon_aviso_Encomendas.image = AvisoImagem
+        self.prety_icon_aviso_Encomendas.place(x=130, y=45)
+        self.prety_icon_aviso_Encomendas.bind("<Button-1>", lambda event: messagebox.showinfo("Aviso!","Esta é a pagina das Encomendas, aqui podes ver e fazer as encomendas todas."))
 
         #Puxar a janela do inicio para cima quando o programa abrir
         self.frameInicio.lift()
