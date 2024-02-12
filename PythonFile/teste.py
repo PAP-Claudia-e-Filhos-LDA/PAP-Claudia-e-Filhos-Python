@@ -439,6 +439,19 @@ class Funcs:
         #Atualizar a frame
         self.canvas_encomendas.update_idletasks()
         self.canvas_encomendas.config(scrollregion=self.canvas_encomendas.bbox("all"))
+    #funções para o Lucro
+    def Lucro_ano(self):
+        self.lista_lucro.delete(*self.lista_lucro.get_children())
+        self.conecta_bd()
+        resultado = self.cursor.execute(
+            "SELECT strftime('%m', data_encomenda) AS mes, SUM(preco_produto * quantidade) AS total_lucro FROM Encomendas JOIN Linha_de_Encomenda ON Encomendas.id_Encomendas = Linha_de_Encomenda.Encomendas_id_Encomendas JOIN Produtos ON Linha_de_Encomenda.Produtos_id_produto = Produtos.id_produto WHERE strftime('%Y', data_encomenda) = ? GROUP BY mes ORDER BY mes;",
+            ("2024",))
+        for row in resultado:
+            self.lista_lucro.insert("", "end", values=row)
+        self.desconecta_bd()
+
+
+
 
 class Dashboard(Funcs):
     def __init__(self, window):
@@ -464,7 +477,7 @@ class Dashboard(Funcs):
         style.configure('Treeview', fieldbackground='#2E3133')
 
         ##############################################################################################################################################
-        ##################################################### Barra Lateral ###########################################################################
+        ##################################################### Barra Lateral ##########################################################################
         ##############################################################################################################################################
 
         # Barra Lateral
@@ -499,7 +512,7 @@ class Dashboard(Funcs):
         self.manager_text.place(x=160, y=375)
 
         ## Btn Lucro
-        self.settings_text = Button(self.sidebar, text='Lucro', bg='#2E3133', font=("", 12, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=10)
+        self.settings_text = Button(self.sidebar, text='Lucro', bg='#2E3133', font=("", 12, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=10,command=lambda: self.frameLucro.lift())
         self.settings_text.place(x=30, y=425)
 
         ## Btn Sair
@@ -532,7 +545,6 @@ class Dashboard(Funcs):
         ## Frame 1 do body (Grafico)
         self.bodyFrame1_Inicio = Frame(self.frameInicio, bg="#2E3133")
         self.bodyFrame1_Inicio.place(x=28.5, y=90, width=1011, height=350)
-
         self.grafico()
 
         ## Frame 2 do body (Clientes)
@@ -993,15 +1005,37 @@ class Dashboard(Funcs):
         self.heading_Lucro.place(x=25, y=50)
 
         ## Linha
-        self.line_Clientes = Label(self.frameLucro, text="___________________________", font=("", 10, "bold"), fg='#FD9C3A',bg='#17191F')
+        self.line_Clientes = Label(self.frameLucro, text="____________", font=("", 10, "bold"), fg='#FD9C3A',bg='#17191F')
         self.line_Clientes.place(x=25, y=25)
 
-        # Aviso de Como funciona a encomenda
-        self.prety_icon_aviso_Encomendas = Label(self.frameLucro, image=AvisoImagem, bg='#17191F')
-        self.prety_icon_aviso_Encomendas.image = AvisoImagem
-        self.prety_icon_aviso_Encomendas.place(x=130, y=45)
-        self.prety_icon_aviso_Encomendas.bind("<Button-1>", lambda event: messagebox.showinfo("Aviso!","Esta é a pagina das Encomendas, aqui podes ver e fazer as encomendas todas."))
+        ## Aviso de Como funciona a encomenda
+        self.prety_icon_aviso_Lucro = Label(self.frameLucro, image=AvisoImagem, bg='#17191F')
+        self.prety_icon_aviso_Lucro.image = AvisoImagem
+        self.prety_icon_aviso_Lucro.place(x=200, y=45)
+        self.prety_icon_aviso_Lucro.bind("<Button-1>", lambda event: messagebox.showinfo("Aviso!","Esta é a pagina do Lucro, aqui podes ver o teu lucro e as estatisticas das tuas vendas."))
 
+        ## Frame que vai ter tudo (Lucro e Stats)
+        self.frameLucro_stats = Frame(self.frameLucro, bg="#2E3133")
+        self.frameLucro_stats.place(x=28, y=90, width=1012, height=650)
+
+        ###Treeview par mostrar os meses que lucram mais
+        self.lista_lucro =tkinter.ttk.Treeview(self.frameLucro_stats, columns=("col1", "col2"))
+        self.lista_lucro.heading("#0", text="")
+        self.lista_lucro.heading("#1", text="Mês", anchor='w')
+        self.lista_lucro.heading("#2", text="Total", anchor='w')
+        self.lista_lucro.column("#0", width=3, stretch=NO)
+        self.lista_lucro.column("#1", width=125, stretch=NO)
+        self.lista_lucro.column("#2", width=72, stretch=NO)
+        self.lista_lucro.place(relx=0.04, rely=0.15, relwidth=0.20, relheight=0.81)
+
+        ### Sroll Bar
+        self.sroll = Scrollbar(self.lista_lucro, orient="vertical")
+        self.sroll.configure(command=self.lista_lucro.yview)
+        self.sroll.place(relx=0.87, rely=0.05, relwidth=0.13, relheight=0.95)
+        self.lista_lucro.configure(yscroll=self.sroll.set)
+        self.Lucro_ano()
+
+        #Quandoo mes e o ano estiverem selecionados as informações vao aparecer ao lado
         #Puxar a janela do inicio para cima quando o programa abrir
         self.frameInicio.lift()
 def win():
