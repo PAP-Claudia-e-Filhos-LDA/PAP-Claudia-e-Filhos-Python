@@ -345,11 +345,13 @@ class Funcs:
                             self.conn.commit()
                     self.desconecta_bd()
 
+
                     #Limpar as entrys
                     self.clientes_lista_encomendas.selection_remove(self.clientes_lista_encomendas.selection())
-                    if hasattr(self, 'nome_erro_encomendas') or hasattr(self, 'nome_erro_produtos'):
-                        self.nome_erro_produtos.config(text='')
-                        self.nome_erro_encomendas.config(text="")
+                    if hasattr(self, 'nome_erro_encomendas'):
+                        self.nome_erro_encomendas.config(text='')
+                    if hasattr(self, 'nome_erro_produtos'):
+                        self.nome_erro_produtos.config(text="")
                     for entry in self.quantidade_entries:
                         entry.delete(0, 'end')
                         entry.insert(0, "0")
@@ -365,8 +367,13 @@ class Funcs:
         self.lista_clientes_encomendas()  # Numero de Encomendas por Clientes
         self.grafico()  # Grafico do Lucro
         self.mostrar_encomendas() #tabela das encomendaas
+        for var in self.check_var_list:#reset ás entrys
+            var.set(0)
+        for entry in self.quantidade_entries:
+            entry.delete(0, 'end')
+            entry.insert(0, "0")
 
-        # Talvez adicionar mais!!!!!
+            # Talvez adicionar mais!!!!!
     def obter_checkbox_status(self):#verifica as checkboxes que estao selecionadas e ver se são fritos ou congelados
         return [1 if check_var.get() == 1 else 0 for check_var in self.check_var_list]
     def obter_quantidades(self):#serve para saber os valores que estavam nas entrys e saber as quantidades (em duzias de cada produto)
@@ -443,15 +450,15 @@ class Funcs:
     def Lucro_ano(self):
         self.lista_lucro.delete(*self.lista_lucro.get_children())
         self.conecta_bd()
+        nomes_meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho','Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
         resultado = self.cursor.execute(
             "SELECT strftime('%m', data_encomenda) AS mes, SUM(preco_produto * quantidade) AS total_lucro FROM Encomendas JOIN Linha_de_Encomenda ON Encomendas.id_Encomendas = Linha_de_Encomenda.Encomendas_id_Encomendas JOIN Produtos ON Linha_de_Encomenda.Produtos_id_produto = Produtos.id_produto WHERE strftime('%Y', data_encomenda) = ? GROUP BY mes ORDER BY mes;",
             ("2024",))
-        for row in resultado:
-            self.lista_lucro.insert("", "end", values=row)
+        for linha in resultado:
+            nome_mes=nomes_meses[int(linha[0])-1]
+            linha=(nome_mes,linha[1])
+            self.lista_lucro.insert("", "end", values=linha)
         self.desconecta_bd()
-
-
-
 
 class Dashboard(Funcs):
     def __init__(self, window):
