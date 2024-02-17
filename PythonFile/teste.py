@@ -447,18 +447,130 @@ class Funcs:
         self.canvas_encomendas.update_idletasks()
         self.canvas_encomendas.config(scrollregion=self.canvas_encomendas.bbox("all"))
     #funções para o Lucro
-    def Lucro_ano(self):
-        self.lista_lucro.delete(*self.lista_lucro.get_children())
+    def AnosServico(self): #mostra umaa combobox com todos os anos onde houve encomendas
         self.conecta_bd()
-        nomes_meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho','Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
-        resultado = self.cursor.execute(
-            "SELECT strftime('%m', data_encomenda) AS mes, SUM(preco_produto * quantidade) AS total_lucro FROM Encomendas JOIN Linha_de_Encomenda ON Encomendas.id_Encomendas = Linha_de_Encomenda.Encomendas_id_Encomendas JOIN Produtos ON Linha_de_Encomenda.Produtos_id_produto = Produtos.id_produto WHERE strftime('%Y', data_encomenda) = ? GROUP BY mes ORDER BY mes;",
-            ("2024",))
-        for linha in resultado:
-            nome_mes=nomes_meses[int(linha[0])-1]
-            linha=(nome_mes,linha[1])
-            self.lista_lucro.insert("", "end", values=linha)
+        anos = self.cursor.execute("SELECT DISTINCT strftime('%Y', data_encomenda) FROM Encomendas").fetchall()
         self.desconecta_bd()
+        self.Combo_ano['values'] =  [str(ano[0]) for ano in anos]
+    def Lucro_ano(self):#Função que dependendo do ano vai mostrando o lucro de todos os meses
+        self.lista_lucro.delete(*self.lista_lucro.get_children())
+
+        try:
+            self.conecta_bd()
+            ano = self.Combo_ano.get() #vai buscar o ano da combobox
+            nomes_meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro','Outubro', 'Novembro', 'Dezembro'] #variavel com os meses para passar o numero do mes para o nome respetivo dele
+            resultado = self.cursor.execute("SELECT strftime('%m', data_encomenda) AS mes, SUM(preco_produto * quantidade) AS total_lucro FROM Encomendas JOIN Linha_de_Encomenda ON Encomendas.id_Encomendas = Linha_de_Encomenda.Encomendas_id_Encomendas JOIN Produtos ON Linha_de_Encomenda.Produtos_id_produto = Produtos.id_produto WHERE strftime('%Y', data_encomenda) = ? GROUP BY mes ORDER BY mes;",(ano,))
+            for linha in resultado:
+                nome_mes = nomes_meses[int(linha[0]) - 1]
+                linha = (nome_mes, str(linha[1]) + " €")
+                self.lista_lucro.insert("", "end", values=linha)
+
+            #Vai fazer ass informações necessarias do ano escolhido
+            if not hasattr(self, 'stats_frame_ano'): #Frame onde vaai estar tudo
+                self.stats_frame_ano = Frame(self.frameLucro_stats, bg="#2E3133", bd=1, highlightbackground="white",highlightthickness=1)
+                self.stats_frame_ano.place(x=275, y=70, width=700, height=255)
+
+            #Label a dizer o ano selecionado
+            self.ano_label = Label(self.stats_frame_ano, text="Lucro e Estatisticas de " + ano, bg='#2E3133', font=("", 15, "bold"),fg='white')
+            self.ano_label.place(x=200, y=0)
+
+            #Label a dizer melhores compradores
+            self.melhores_compradores_label = Label(self.stats_frame_ano, text="Melhores Compradores ", bg='#2E3133', font=("", 12, "bold"),fg='white')
+            self.melhores_compradores_label.place(x=20, y=30)
+
+            #Treeview dos melhores compradores do ano em questão
+            self.lista_melhores_clientes_ano = tkinter.ttk.Treeview(self.stats_frame_ano, columns=("col1", "col2"))
+            self.lista_melhores_clientes_ano.heading("#0", text="")
+            self.lista_melhores_clientes_ano.heading("#1", text="Cliente", anchor='w')
+            self.lista_melhores_clientes_ano.heading("#2", text="Total Encomendas", anchor='w')
+            self.lista_melhores_clientes_ano.column("#0", width=1, stretch=NO)
+            self.lista_melhores_clientes_ano.column("#1", width=73, stretch=NO)
+            self.lista_melhores_clientes_ano.column("#2", width=110, stretch=NO)
+            self.lista_melhores_clientes_ano.place(relx=0.03, rely=0.25, relwidth=0.27, relheight=0.70)
+            self.melhores_clientes_ano(ano)
+
+            #Scrollbar
+            self.sroll = Scrollbar(self.lista_melhores_clientes_ano, orient="vertical")
+            self.sroll.configure(command=self.lista_melhores_clientes_ano.yview)
+            self.sroll.place(relx=0.89, rely=0.145, relwidth=0.1, relheight=0.85)
+            self.lista_melhores_clientes_ano.configure(yscroll=self.sroll.set)
+
+            #Label a dizer Produtos mais Comprados
+            self.produtos_mais_comprados_label = Label(self.stats_frame_ano, text="Produtos mais Comprados", bg='#2E3133',font=("", 12, "bold"), fg='white')
+            self.produtos_mais_comprados_label.place(x=225, y=30)
+
+            #Treeview dos melhores produtos do ano em questão
+            self.lista_melhores_prod_ano = tkinter.ttk.Treeview(self.stats_frame_ano, columns=("col1", "col2"))
+            self.lista_melhores_prod_ano.heading("#0", text="")
+            self.lista_melhores_prod_ano.heading("#1", text="Produto", anchor='w')
+            self.lista_melhores_prod_ano.heading("#2", text="Total Encomendados", anchor='w')
+            self.lista_melhores_prod_ano.column("#0", width=1, stretch=NO)
+            self.lista_melhores_prod_ano.column("#1", width=80, stretch=NO)
+            self.lista_melhores_prod_ano.column("#2", width=124, stretch=NO)
+            self.lista_melhores_prod_ano.place(relx=0.329, rely=0.25, relwidth=0.3, relheight=0.70)
+            self.melhores_prod_ano(ano)
+
+            # Scrollbar
+            self.sroll = Scrollbar(self.lista_melhores_prod_ano, orient="vertical")
+            self.sroll.configure(command=self.lista_melhores_prod_ano.yview)
+            self.sroll.place(relx=0.89, rely=0.145, relwidth=0.1, relheight=0.85)
+            self.lista_melhores_prod_ano.configure(yscroll=self.sroll.set)
+
+            #Label a dizer Total Faturado
+            self.total_faturado_label = Label(self.stats_frame_ano, text="Total Faturado", bg='#2E3133',font=("", 12, "bold"), fg='white')
+            self.total_faturado_label.place(x=500, y=30)
+
+            #Treeview dos melhores produtos do ano em questão
+            self.lista_total_faturado_ano = tkinter.ttk.Treeview(self.stats_frame_ano, columns=("col1"))
+            self.lista_total_faturado_ano.heading("#0", text="")
+            self.lista_total_faturado_ano.heading("#1", text="Lucro Total", anchor='center')
+            self.lista_total_faturado_ano.column("#0", width=1, stretch=NO)
+            self.lista_total_faturado_ano.column("#1", width=204, stretch=NO, anchor='center')
+            self.lista_total_faturado_ano.place(relx=0.66, rely=0.25, relwidth=0.3, relheight=0.70)
+            self.lucro_total_ano(ano)
+
+        except:
+            print("Ano ou Mês ainda não selecionado")
+    #Estas 3 funções são para mostrar as estatisticas e lucro do ano que foi escolhido
+    def melhores_clientes_ano(self, ano):
+        self.lista_melhores_clientes_ano.delete(*self.lista_melhores_clientes_ano.get_children())
+        self.conecta_bd()
+        lista = self.cursor.execute("SELECT c.nome_cliente, COUNT(e.id_Encomendas) AS total_encomendas FROM Clientes c JOIN Encomendas e ON c.id_clientes = e.id_clientes WHERE strftime('%Y', e.data_encomenda) = ? GROUP BY c.id_clientes ORDER BY total_encomendas DESC;",(ano,))
+        for i in lista:
+            self.lista_melhores_clientes_ano.insert("", "end", values=i)
+        self.lista_melhores_clientes_ano.update()
+        self.desconecta_bd()
+    def melhores_prod_ano(self, ano):
+        self.lista_melhores_prod_ano.delete(*self.lista_melhores_prod_ano.get_children())
+        self.conecta_bd()
+        lista = self.cursor.execute("SELECT p.nome_produto, SUM(le.quantidade) AS total_quantidade FROM Produtos p JOIN Linha_de_Encomenda le ON p.id_produto = le.Produtos_id_produto JOIN Encomendas e ON le.Encomendas_id_Encomendas = e.id_Encomendas WHERE strftime('%Y', e.data_encomenda) = ? GROUP BY p.id_produto ORDER BY total_quantidade DESC;",(ano,))
+        for i in lista:
+            self.lista_melhores_prod_ano.insert("", "end", values=i)
+        self.lista_melhores_prod_ano.update()
+        self.desconecta_bd()
+    def lucro_total_ano(self, ano):
+        self.lista_total_faturado_ano.delete(*self.lista_total_faturado_ano.get_children())
+        self.conecta_bd()
+        lista = self.cursor.execute(
+            "SELECT SUM(le.quantidade * p.preco) || ' €' AS lucro_total FROM Produtos p JOIN Linha_de_Encomenda le ON p.id_produto = le.Produtos_id_produto JOIN Encomendas e ON le.Encomendas_id_Encomendas = e.id_Encomendas WHERE strftime('%Y', e.data_encomenda) = ?;",
+            (ano,))
+        for i in lista:
+            self.lista_total_faturado_ano.insert("", "end", values=i)
+        self.lista_total_faturado_ano.update()
+        self.desconecta_bd()
+
+    # Estas 3 funções são para mostrar as estatisticas e lucro do mes e do que foi escolhido
+
+
+    def Lucro_mes(self):#Dependedo de cada mes selecionado vai mostar as estatisticas e informações uteis
+        selecionado = self.lista_lucro.selection()
+        mes = self.lista_lucro.item(selecionado[0], "values")[0]
+
+        if not hasattr(self, 'stats_frame_mes'):  # Frame onde vaai estar tudo
+            self.stats_frame_mes =Frame(self.frameLucro_stats, bg="#2E3133", bd=1, highlightbackground="white",highlightthickness=1)
+            self.stats_frame_mes.place(x=275, y=350, width=700, height=275)
+        
+
 
 class Dashboard(Funcs):
     def __init__(self, window):
@@ -482,6 +594,11 @@ class Dashboard(Funcs):
         style.configure('Treeview.Heading', background="#FD9C3A")
         style.configure('Treeview',rowheight=35)
         style.configure('Treeview', fieldbackground='#2E3133')
+
+        #Decorar a Combobox
+        style.map('TCombobox', fieldbackground=[('readonly', '#FD9C3A'), ('focus', '#FD9C3A')])
+        style.configure('TCombobox', background="#2E3133", foreground='black', font=("", 10, "bold"),bordercolor='white')
+
 
         ##############################################################################################################################################
         ##################################################### Barra Lateral ##########################################################################
@@ -1031,9 +1148,10 @@ class Dashboard(Funcs):
         self.lista_lucro.heading("#1", text="Mês", anchor='w')
         self.lista_lucro.heading("#2", text="Total", anchor='w')
         self.lista_lucro.column("#0", width=3, stretch=NO)
-        self.lista_lucro.column("#1", width=125, stretch=NO)
-        self.lista_lucro.column("#2", width=72, stretch=NO)
+        self.lista_lucro.column("#1", width=75, stretch=NO)
+        self.lista_lucro.column("#2", width=122, stretch=NO)
         self.lista_lucro.place(relx=0.04, rely=0.15, relwidth=0.20, relheight=0.81)
+        self.lista_lucro.bind("<<TreeviewSelect>>", lambda event: self.Lucro_mes())
 
         ### Sroll Bar
         self.sroll = Scrollbar(self.lista_lucro, orient="vertical")
@@ -1042,7 +1160,15 @@ class Dashboard(Funcs):
         self.lista_lucro.configure(yscroll=self.sroll.set)
         self.Lucro_ano()
 
+        ### Combo box com o ano
+        self.Combo_ano = ttk.Combobox(self.frameLucro_stats, state="readonly", background="#2E3133",foreground='#FD9C3A', font=("", 10, "bold"),width=26)
+        self.Combo_ano.place(x=41, y=70)
+        self.AnosServico()
+        self.Combo_ano.bind("<<ComboboxSelected>>", lambda event: self.Lucro_ano())
+
         #Quandoo mes e o ano estiverem selecionados as informações vao aparecer ao lado
+
+
         #Puxar a janela do inicio para cima quando o programa abrir
         self.frameInicio.lift()
 def win():
