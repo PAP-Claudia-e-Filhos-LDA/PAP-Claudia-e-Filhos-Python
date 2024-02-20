@@ -123,7 +123,7 @@ class Funcs:
 
         except FileNotFoundError: #se na base de dados não estiver nenhuma imagem/houver um erro a ir buscar uma imagem vai trocar a imagem e o texto do botão
 
-            ImagemProduto =ImageTk.PhotoImage(Image.open('../imagens/semImagem.png').resize((250, 135)))
+            ImagemProduto =ImageTk.PhotoImage(Image.open('../img/semImagem.png').resize((250, 135)))
             hora_erro = datetime.now().strftime("%H:%M:%S")
             print(f"Erro: Imagem não Encontrada - {hora_erro}")
             self.logo.config(image=ImagemProduto)
@@ -212,8 +212,8 @@ class Funcs:
 
             try:
                 imagem = Image.open(self.caminho_nova_imagem).resize((250, 135))
-                imagem.save(os.path.join("../imagens/", f"imagem_produto_{item}.png"))
-                imagem = "../imagens/" + f"imagem_produto_{item}.png"
+                imagem.save(os.path.join("../img/", f"imagem_produto_{item}.png"))
+                imagem = "../img/" + f"imagem_produto_{item}.png"
             except Exception:
                 if selecionado:
                     imagem = self.cursor.execute("SELECT caminho_imagem FROM Produtos WHERE id_produto=?", (item,)).fetchone()[0]
@@ -245,6 +245,7 @@ class Funcs:
                     self.desconecta_bd()
                     self.N_produtosFrame3_Produtos.config(text=int(self.contar_Produtos()))
                     self.N_produtosFrame3_Inicio.config(text=int(self.contar_Produtos()))
+                    self.Limpar()
             except:
                 hora_erro = datetime.now().strftime("%H:%M:%S")
                 print(f"Ocorreu um erro ao tentar adicionar/atualizar algo na base dados - {hora_erro}")
@@ -411,42 +412,47 @@ class Funcs:
         self.conecta_bd()
 
         #Vai buscar o ID, Cliente e Data de todas as encomendas
-        dados_encomendas = self.cursor.execute("SELECT Encomendas.id_Encomendas AS 'ID Encomenda', Clientes.nome_cliente AS 'Nome do Cliente', Encomendas.data_encomenda AS 'Data' FROM Encomendas JOIN Clientes ON Encomendas.id_clientes = Clientes.id_clientes ORDER BY Encomendas.id_Encomendas DESC;").fetchall()
+        dados_encomendas = self.cursor.execute("SELECT Encomendas.id_Encomendas AS 'ID Encomenda', Clientes.nome_cliente AS 'Nome do Cliente', Encomendas.data_encomenda AS 'Data', CASE WHEN Encomendas.metedo_pagamento = 0 THEN 'Pagamento em Mãos' ELSE 'MBway' END AS 'Método de Pagamento', CASE WHEN Encomendas.metedo_entrega = 0 THEN 'Pickup' ELSE 'Entrega ao domicílio' END AS 'Método de Entrega' FROM Encomendas JOIN Clientes ON Encomendas.id_clientes = Clientes.id_clientes ORDER BY Encomendas.id_Encomendas DESC;").fetchall()
         self.desconecta_bd()
 
-        # Exibir os dados obtidos do banco de dados
+        #Para cada encomenda vai adicionar as informações todas (produtos,quantidades e estado)
         for linha_encomenda, info_encomenda in enumerate(dados_encomendas):
-            id_encomenda, nome_cliente, data_encomenda = info_encomenda
-            produtos_quantidades = [] #tupula para depois por os produtos , quantidades e estado
-            total_encomenda = 0 #variavel para o preço total de caada encomenda
+            id_encomenda, nome_cliente, data_encomenda, metodo_pagamento, metodo_entrega = info_encomenda
+            produtos_quantidades = []  #tupula para depois por os produtos, quantidades e estado
+            total_encomenda = 0  #variavel para o preço total de cada encomenda
 
             self.conecta_bd()
             #Vai buscar os produtos de cada encomenda
-            dados_produtos = self.cursor.execute("SELECT Produtos.nome_produto, Linha_de_Encomenda.quantidade, CASE WHEN Produtos.nome_produto LIKE '%Rissol%' OR Produtos.nome_produto LIKE '%Rissois%' OR Produtos.nome_produto LIKE '%Croquete%' OR Produtos.nome_produto LIKE '%Trouxa%' THEN Linha_de_Encomenda.congelados ELSE '' END AS congelados, Produtos.preco FROM Linha_de_Encomenda JOIN Produtos ON Linha_de_Encomenda.Produtos_id_produto = Produtos.id_produto WHERE Linha_de_Encomenda.Encomendas_id_Encomendas = ?;", (id_encomenda,)).fetchall()
+            dados_produtos = self.cursor.execute("SELECT Produtos.nome_produto, Linha_de_Encomenda.quantidade, CASE WHEN Produtos.nome_produto LIKE '%Rissol%' OR Produtos.nome_produto LIKE '%Rissois%' OR Produtos.nome_produto LIKE '%Croquete%' OR Produtos.nome_produto LIKE '%Trouxa%' THEN Linha_de_Encomenda.congelados ELSE '' END AS congelados, Produtos.preco FROM Linha_de_Encomenda JOIN Produtos ON Linha_de_Encomenda.Produtos_id_produto = Produtos.id_produto WHERE Linha_de_Encomenda.Encomendas_id_Encomendas = ?;",(id_encomenda,)).fetchall()
             self.desconecta_bd()
 
-            #Calcula o preço total da encomenda e preenche  a tupula com os dados corretos
-            for produtos in dados_produtos: #isto vai repetir por cada produto que existe
+            #Calcula o preço total da encomenda e preenche a tupula com os dados corretos
+            for produtos in dados_produtos:  # isto vai repetir por cada produto que existe
                 produto, quantidade, congelados, preco = produtos
                 produtos_quantidades.append((produto, quantidade, congelados))
                 total_encomenda += quantidade * preco
 
             #Junta tudo numa string
-            encomenda_info = "Encomenda: " + str(id_encomenda) + "\nCliente: " + str(nome_cliente) + "\nData: " + str(data_encomenda) + "\nProdutos:\n"
-            for produto, quantidade, congelados, preco in dados_produtos: #vai adicionar á encomenda_info a informação de cada produto
+            encomenda_info = "Encomenda: {}\nCliente: {}\nData: {}\nMétodo de Pagamento: {}\nMétodo de Entrega: {}\nProdutos:\n".format(
+                id_encomenda, nome_cliente, data_encomenda,
+                "Pagamento em Mãos" if metodo_pagamento == 'Pagamento em Mãos' else 'MBway',
+                "Pickup" if metodo_entrega == 'Pickup' else 'Entrega ao domicílio')
+
+            for produto, quantidade, congelados, preco in dados_produtos:  #vai adicionar à encomenda_info a informação de cada produto
                 tipo_congelamento = "Congelado" if congelados == 0 else "Fritos"
                 congelados_str = "" if congelados == "" else ", " + tipo_congelamento
                 unidade_medida = "duzias" if any(keyword in produto for keyword in ["Rissol", "Rissois", "Croquete", "Trouxa"]) else "unidades"
-                encomenda_info += "- " + str(produto) + " (" + str(quantidade) + " " + unidade_medida + congelados_str + ", Preço: {:.2f}€)\n".format(preco)
+                encomenda_info += "- {} ({} {}{} , Preço: {:.2f}€)\n".format(produto, quantidade, unidade_medida,congelados_str, preco)
             encomenda_info += "Total da Encomenda: {:.2f}€".format(total_encomenda)
 
-            #Faz labels com a string criada
-            Encomenda = Label(self.frame_encomendas, text=encomenda_info, font=("", 12), fg='white', bg='#2E3133',justify='left',)
+            #Junta tudo e mete numa label
+            Encomenda = Label(self.frame_encomendas, text=encomenda_info, font=("", 12), fg='white', bg='#2E3133',justify='left', )
             Encomenda.grid(row=linha_encomenda, column=0, padx=5, pady=5, sticky='w', columnspan=3)
 
         #Atualizar a frame
         self.canvas_encomendas.update_idletasks()
         self.canvas_encomendas.config(scrollregion=self.canvas_encomendas.bbox("all"))
+
     #funções para o Lucro
     def AnosServico(self): #mostra umaa combobox com todos os anos onde houve encomendas
         self.conecta_bd()
@@ -679,7 +685,7 @@ class Dashboard(Funcs):
         # Icon da app
         myappid = 'mycompany.myproduct.subproduct.version'
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-        self.window.iconbitmap(r'../imagens/favicon.ico')
+        self.window.iconbitmap(r'../img/favicon.ico')
 
         # Decorar a Treeview
         style = ttk.Style()
@@ -694,7 +700,6 @@ class Dashboard(Funcs):
         style.map('TCombobox', fieldbackground=[('readonly', '#FD9C3A'), ('focus', '#FD9C3A')])
         style.configure('TCombobox', background="#2E3133", foreground='black', font=("", 10, "bold"),bordercolor='white')
 
-
         ##############################################################################################################################################
         ##################################################### Barra Lateral ##########################################################################
         ##############################################################################################################################################
@@ -704,7 +709,7 @@ class Dashboard(Funcs):
         self.sidebar.place(x=0, y=0, width=300, height=1900)
 
         ## Empresa Imagem
-        EmpresaLogo = ImageTk.PhotoImage(Image.open('../imagens/profile.png'))
+        EmpresaLogo = ImageTk.PhotoImage(Image.open('../img/profile.png'))
         self.prety_icon_empresa_sidebar = Label(self.sidebar, image=EmpresaLogo, bg='#FD9C3A')
         self.prety_icon_empresa_sidebar.image = EmpresaLogo
         self.prety_icon_empresa_sidebar.place(x=70, y=80)
@@ -755,7 +760,7 @@ class Dashboard(Funcs):
         self.line_Inicio.place(x=25, y=25)
 
         ##Icon de aviso para dizer oq a pagina faz (Pagina do Inicio)
-        AvisoImagem = ImageTk.PhotoImage(Image.open('../imagens/aviso.png'))
+        AvisoImagem = ImageTk.PhotoImage(Image.open('../img/aviso.png'))
         self.prety_icon_aviso_Inicio = Label(self.frameInicio, image=AvisoImagem, bg='#17191F')
         self.prety_icon_aviso_Inicio.image = AvisoImagem
         self.prety_icon_aviso_Inicio.place(x=120, y=45)
@@ -780,7 +785,7 @@ class Dashboard(Funcs):
         self.lineFrame2_Inicio.place(x=60, y=5)
 
         ### Imagem
-        ClientesImage = ImageTk.PhotoImage(Image.open('../imagens/clientes.png'))
+        ClientesImage = ImageTk.PhotoImage(Image.open('../img/clientes.png'))
         self.prety_icon_clientes_Inicio = Label(self.bodyFrame2_Inicio, image=ClientesImage, bg='#2E3133')
         self.prety_icon_clientes_Inicio.image = ClientesImage
         self.prety_icon_clientes_Inicio.place(x=25, y=21)
@@ -804,7 +809,7 @@ class Dashboard(Funcs):
         self.lineFrame3_Inicio.place(x=60, y=5)
 
         ### Imagem
-        ProdutosImage = ImageTk.PhotoImage(Image.open('../imagens/shopping-cart.png'))
+        ProdutosImage = ImageTk.PhotoImage(Image.open('../img/shopping-cart.png'))
         self.prety_icon_produtos_Inicio = Label(self.bodyFrame3_Inicio, image=ProdutosImage, bg='#2E3133')
         self.prety_icon_produtos_Inicio.image = ProdutosImage
         self.prety_icon_produtos_Inicio.place(x=25, y=21)
@@ -827,7 +832,7 @@ class Dashboard(Funcs):
         self.lineFrame4_Inicio.place(x=60, y=5)
 
         ### Imagem
-        EncomendasImage = ImageTk.PhotoImage(Image.open('../imagens/encomenda.png'))
+        EncomendasImage = ImageTk.PhotoImage(Image.open('../img/encomenda.png'))
         self.prety_icon_encomendas_Inicio = Label(self.bodyFrame4_Inicio, image=EncomendasImage, bg='#2E3133')
         self.prety_icon_encomendas_Inicio.image = EncomendasImage
         self.prety_icon_encomendas_Inicio.place(x=25, y=21)
@@ -903,7 +908,7 @@ class Dashboard(Funcs):
         self.lineFrame3_Produtos.place(x=60, y=0)
 
         ### Imagem de um carrinho (para estetica)
-        ProdutosImage = ImageTk.PhotoImage(Image.open('../imagens/shopping-cart.png'))
+        ProdutosImage = ImageTk.PhotoImage(Image.open('../img/shopping-cart.png'))
         self.prety_icon_encomendas_produtos = Label(self.bodyFrame3_Produtos, image=ProdutosImage, bg='#2E3133')
         self.prety_icon_encomendas_produtos.image = ProdutosImage
         self.prety_icon_encomendas_produtos.place(x=20, y=16)
@@ -931,14 +936,14 @@ class Dashboard(Funcs):
         self.prety_icon_aviso_alt_Produtos.bind("<Button-1>",lambda event: messagebox.showinfo("Aviso!", "Como usar a janela de alterar produtos:\n\n1)Para alterar um produto dê um click no produto que quer, depois se quiser auto preencher as entrys para saber que produto selecionou faça double click;\n2) Para adicionar um produto não pode ter nenhum produto selecionado;\n3) Para remover faça um click com o botão direito do rato;"))
 
         ### Imagen de um certo para aceitar
-        CertoImage = ImageTk.PhotoImage(Image.open('../imagens/aceitar.png'))
+        CertoImage = ImageTk.PhotoImage(Image.open('../img/aceitar.png'))
         self.aceitar = Label(self.bodyFrame4_Produtos, image=CertoImage, bg='#2E3133')
         self.aceitar.image = CertoImage
         self.aceitar.place(x=260, y=25)
         self.aceitar.bind("<Button-1>", lambda event: self.adicionar_produto())
 
         ### Imagen de uma vassoura para limpar as entrys
-        VassouraImage = ImageTk.PhotoImage(Image.open('../imagens/limpar.png'))
+        VassouraImage = ImageTk.PhotoImage(Image.open('../img/limpar.png'))
         self.limpar = Label(self.bodyFrame4_Produtos, image=VassouraImage, bg='#2E3133')
         self.limpar.image = VassouraImage
         self.limpar.place(x=225, y=25)
@@ -982,7 +987,7 @@ class Dashboard(Funcs):
 
         ### Try que serve para abrir o programa sem imagem, e quando tiver imagem vai aparecer acho(?)
         try:
-            ImagemProduto = ImageTk.PhotoImage(Image.open('../imagens/semImagem.png').resize((250, 135)))
+            ImagemProduto = ImageTk.PhotoImage(Image.open('../img/semImagem.png').resize((250, 135)))
             self.logo = Label(self.bodyFrame4_Produtos, image=ImagemProduto, bg='#2E3133',bd=1)
             self.logo.image = ImagemProduto
             self.logo.place(x=15, y=275)
@@ -1126,6 +1131,14 @@ class Dashboard(Funcs):
         ## Frame (Tudo)
         self.frameListaClientes = Frame(self.frameEncomendas, bg="#2E3133")
         self.frameListaClientes.place(x=28, y=90, width=1012, height=650)
+
+        ### Combobox para o metedo de pagamento
+        self.Combo_pagamento = ttk.Combobox(self.frameListaClientes, state="readonly", background="#2E3133",foreground='#FD9C3A', font=("", 10, "bold"), width=26, values=['Pagamento em Mãos', 'MBway'])
+        self.Combo_pagamento.place(x=420, y=50)
+
+        ### Combobox para o metedo de levantamento
+        #self.Combo_levar = ttk.Combobox(self.frameListaClientes, state="readonly", background="#2E3133",foreground='#FD9C3A', font=("", 10, "bold"),width=26)
+        #self.Combo_levar.place(x=141, y=70)
 
         ### Label a dizer fazer encomendas
         self.LabelFazer_Encomenda = Label(self.frameListaClientes, bg="#2E3133", text="Fazer Encomenda", font=("", 15, "bold"),fg='white')
