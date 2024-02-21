@@ -307,62 +307,76 @@ class Funcs:
             self.frame_checkbuttons.update_idletasks()
     def fazer_encomendas(self):#fazer a encomenda e um monte de verificações antes
         try:
-            quantidades = self.obter_quantidades() #array com as quantidades que estão nas entrys
-            fritos_congelados = self.obter_checkbox_status()#verificar se é frito ou congelado
+            quantidades = self.obter_quantidades()  # array com as quantidades que estão nas entrys
+            fritos_congelados = self.obter_checkbox_status()  # verificar se é frito ou congelado
 
-            #isto é para saber o nome do cliente que esta selcionado
+            # isto é para saber o nome do cliente que esta selcionado
             selecionado = self.clientes_lista_encomendas.selection()[0]
             values = self.clientes_lista_encomendas.item(selecionado).get('values')
             valor_selecionado = values[0] if values else None
 
-            if hasattr(self, 'nome_erro_encomendas'): #fazer a mensagem de erro caso algo aconteça
+            if hasattr(self, 'nome_erro_encomendas'):  # fazer a mensagem de erro caso algo aconteça
                 self.nome_erro_encomendas.config(text="")
 
         except Exception as e:
-            if not hasattr(self, 'nome_erro_encomendas'):#mudar o texto da mensagem de erro
-                self.nome_erro_encomendas = Label(self.frameListaClientes,bg="#2E3133",text="Nenhum Cliente Selecionado",font=("", 8, "bold"),fg='red')
+            if not hasattr(self, 'nome_erro_encomendas'):  # mudar o texto da mensagem de erro
+                self.nome_erro_encomendas = Label(self.frameListaClientes, bg="#2E3133",
+                                                  text="Nenhum Cliente Selecionado", font=("", 8, "bold"), fg='red')
                 self.nome_erro_encomendas.place(x=25, y=60)
 
         self.conecta_bd()
         try:
-                resultado_encomendas = self.cursor.execute("SELECT COUNT(DISTINCT id_Encomendas) FROM Encomendas;").fetchone()
-                id_encomenda = resultado_encomendas[0] + 1 #vai buscar o numero de encomendas e adiciona 1
-                self.cursor.execute('SELECT id_clientes FROM Clientes WHERE nome_cliente = ?',(valor_selecionado,))  # usa o nome do cliente para saber o id dele
-                id_clientes = self.cursor.fetchone()[0]
+            resultado_encomendas = self.cursor.execute(
+                "SELECT COUNT(DISTINCT id_Encomendas) FROM Encomendas;").fetchone()
+            id_encomenda = resultado_encomendas[0] + 1  # vai buscar o numero de encomendas e adiciona 1
+            self.cursor.execute('SELECT id_clientes FROM Clientes WHERE nome_cliente = ?',
+                                (valor_selecionado,))  # usa o nome do cliente para saber o id dele
+            id_clientes = self.cursor.fetchone()[0]
 
+            self.desconecta_bd()
+            if id_clientes:
+                if all(qty == 0 for qty in quantidades) and all(str(qty).isdigit() for qty in quantidades):
+                    raise Exception  # se houver algum erro nas quantidades não vai adicionar encomenda e sai do try
+
+                self.conecta_bd()
+                data_encomenda = datetime.now().strftime("%Y-%m-%d")
+                metodo_pagamento = 0 if self.Combo_pagamento.current() == 0 else 1
+                metodo_entrega = 0 if self.Combo_levar.current() == 0 else 1
+
+                self.cursor.execute(
+                    "INSERT INTO Encomendas (`id_Encomendas`, `id_clientes`, `data_encomenda`, `metedo_pagamento`, `metedo_entrega`) VALUES (?, ?, ?, ?, ?);",
+                    (id_encomenda, id_clientes, data_encomenda, metodo_pagamento,
+                     metodo_entrega))  # cria uma encomenda para um cliente no dia em que esta a ser feito
                 self.desconecta_bd()
-                if id_clientes:
-                    if all(qty == 0 for qty in quantidades) and all(str(qty).isdigit() for qty in quantidades):
-                        raise Exception #se houver algum erro nas quantidades não vai adicionar encomenda e sai do try
 
-                    self.conecta_bd()
-                    data_encomenda = datetime.now().strftime("%Y-%m-%d")
-                    self.cursor.execute("INSERT INTO Encomendas (`id_Encomendas`, `id_clientes`, `data_encomenda`) VALUES (?, ?, ?);",(id_encomenda, id_clientes, data_encomenda)) #cria uma encomenda para um cliente no dia em que esta a ser feito
-                    self.desconecta_bd()
+                self.conecta_bd()
+                for i, quantidade in enumerate(
+                        quantidades):  # vai adicionar na linha de encomenda os produtos , as quantidades e se esta congelado ou frito
+                    if int(quantidade) > 0:  # para nao adicionar produtos vazios só adiciona aqueles que têm mais de 0 na quantidade
+                        self.cursor.execute(
+                            """INSERT INTO Linha_de_Encomenda (Encomendas_id_Encomendas, Produtos_id_produto, congelados, quantidade) VALUES (?, ?, ?, ?);""",
+                            (id_encomenda, i + 1, fritos_congelados[i], quantidade))
+                        self.conn.commit()
+                self.desconecta_bd()
 
-                    self.conecta_bd()
-                    for i, quantidade in enumerate(quantidades): #vai adicionar na linha de encomenda os produtos , as quantidades e se esta congelado ou frito
-                        if int(quantidade) > 0:#para nao adicionar produtos vazios só adiciona aqueles que têm mais de 0 na quantidade
-                            self.cursor.execute("""INSERT INTO Linha_de_Encomenda (Encomendas_id_Encomendas, Produtos_id_produto, congelados, quantidade) VALUES (?, ?, ?, ?);""",(id_encomenda, i +1, fritos_congelados[i], quantidade))
-                            self.conn.commit()
-                    self.desconecta_bd()
+                # Limpar as entrys
+                self.clientes_lista_encomendas.selection_remove(self.clientes_lista_encomendas.selection())
+                if hasattr(self, 'nome_erro_encomendas'):
+                    self.nome_erro_encomendas.config(text='')
+                if hasattr(self, 'nome_erro_produtos'):
+                    self.nome_erro_produtos.config(text="")
 
-
-                    #Limpar as entrys
-                    self.clientes_lista_encomendas.selection_remove(self.clientes_lista_encomendas.selection())
-                    if hasattr(self, 'nome_erro_encomendas'):
-                        self.nome_erro_encomendas.config(text='')
-                    if hasattr(self, 'nome_erro_produtos'):
-                        self.nome_erro_produtos.config(text="")
-                    for entry in self.quantidade_entries:
-                        entry.delete(0, 'end')
-                        entry.insert(0, "0")
-                    for check_var in self.check_var_list:
-                        check_var.set(0)
+                for entry in self.quantidade_entries:
+                    entry.delete(0, 'end')
+                    entry.insert(0, "0")
+                for check_var in self.check_var_list:
+                    check_var.set(0)
+                self.Combo_pagamento.set('')
+                self.Combo_levar.set('')
 
         except Exception:
-                hora_erro = datetime.now().strftime("%H:%M:%S")
-                print(f"Ocorreu um erro ao tentar adicionar/atualizar algo na base dados - {hora_erro}")
+            hora_erro = datetime.now().strftime("%H:%M:%S")
+            print(f"Ocorreu um erro ao tentar adicionar/atualizar algo na base dados - {hora_erro}")
 
         # widgets que vao ser atualizados
         self.N_encomendasFrame4_Inicio.config(text=int(self.contar_Encomendas()))  # Numero de encomendas
@@ -1132,13 +1146,21 @@ class Dashboard(Funcs):
         self.frameListaClientes = Frame(self.frameEncomendas, bg="#2E3133")
         self.frameListaClientes.place(x=28, y=90, width=1012, height=650)
 
-        ### Combobox para o metedo de pagamento
-        self.Combo_pagamento = ttk.Combobox(self.frameListaClientes, state="readonly", background="#2E3133",foreground='#FD9C3A', font=("", 10, "bold"), width=26, values=['Pagamento em Mãos', 'MBway'])
+        ### Label a dizer Metedo de Pagamento
+        self.LabelFazer_Encomenda = Label(self.frameListaClientes, bg="#2E3133", text="Metedo de Pagamento", font=("", 12, "bold"),fg='white')
+        self.LabelFazer_Encomenda.place(x=420, y=25)
+
+        ### Combobox para o metedo de pagamento 0=Em mãos, 1=Mbway
+        self.Combo_pagamento = ttk.Combobox(self.frameListaClientes, state="readonly", background="#2E3133",foreground='#FD9C3A', font=("", 10, "bold"), width=26,values=['Pagamento em Mãos', 'MBway'])
         self.Combo_pagamento.place(x=420, y=50)
 
-        ### Combobox para o metedo de levantamento
-        #self.Combo_levar = ttk.Combobox(self.frameListaClientes, state="readonly", background="#2E3133",foreground='#FD9C3A', font=("", 10, "bold"),width=26)
-        #self.Combo_levar.place(x=141, y=70)
+        ### Label a dizer Metedo de Entrega
+        self.LabelFazer_Encomenda = Label(self.frameListaClientes, bg="#2E3133", text="Metedo de Entrega", font=("", 12, "bold"),fg='white')
+        self.LabelFazer_Encomenda.place(x=640, y=25)
+
+        ### Combobox para o metedo de levantamento 0=Pickup , 1=Entrega ao domicilio
+        self.Combo_levar = ttk.Combobox(self.frameListaClientes, state="readonly", background="#2E3133",foreground='#FD9C3A', font=("", 10, "bold"), width=26,values=['Pickup', 'Entrega ao Domicilio'])
+        self.Combo_levar.place(x=640, y=50)
 
         ### Label a dizer fazer encomendas
         self.LabelFazer_Encomenda = Label(self.frameListaClientes, bg="#2E3133", text="Fazer Encomenda", font=("", 15, "bold"),fg='white')
