@@ -52,7 +52,7 @@ class Funcs:
         self.desconecta_bd()
         return resultado[0]
     def grafico(self):#faz o grafico com o lucro mensal
-        for widget in self.bodyFrame1_Inicio.winfo_children():
+        for widget in self.bodyFrame1_Inicio.winfo_children():#Apaga tudo antes de atualizar o grafico
             widget.destroy()
         ### Grafico
         #### Configs do Grafico
@@ -89,6 +89,31 @@ class Funcs:
         canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=1)
         for text in ax.get_xticklabels() + ax.get_yticklabels():
             text.set_color('white')
+    def refresh(self):#vai dar refresh a tudo caso algo mude no site
+        self.grafico()
+        self.N_clientesFrame2_Inicio.config(text=int(self.contar_clientes()))
+        self.N_produtosFrame3_Produtos.config(text=int(self.contar_Produtos()))
+        self.N_produtosFrame3_Inicio.config(text=int(self.contar_Produtos()))
+        self.N_encomendasFrame4_Inicio.config(text=int(self.contar_Encomendas()))
+        self.lista_produtos()
+        self.lista_clientes()
+        self.lista_clientes_encomendas()
+        self.lista_nome_clientes()
+        self.produtos_encomendas()
+        self.mostrar_mensagens()
+        self.mostrar_encomendas()
+        self.AnosServico()
+        self.Lucro_ano()
+        self.Lucro_mes()
+        self.melhores_clientes_ano(self.Combo_ano.get())
+        self.melhores_prod_ano(self.Combo_ano.get())
+        self.lucro_total_ano(self.Combo_ano.get())
+        try: #estes precisam  de um try pois o mes pode nao estar selecionado
+            self.melhores_clientes_mes(self.Combo_ano.get(),self.num_mes)
+            self.melhores_prod_mes(self.Combo_ano.get(),self.num_mes)
+            self.lucro_total_mes(self.Combo_ano.get(),self.num_mes)
+        except:
+            pass
     # funções para os Produtos
     def lista_produtos(self):#faz o select que vai mostrar os produtos e as suas informações e que depois mete na treeview
         self.produtos_lista.delete(*self.produtos_lista.get_children())
@@ -131,7 +156,7 @@ class Funcs:
             self.nova_imagem.config(text="Adicione uma imagem")
     def Limpar(self):# função que server para limpar as entrys e a seleção da treeview
             resposta = messagebox.askyesno("Confirmação", "Limpar todas as Entrys?")
-            if resposta:
+            if resposta: #Se for Sim vai limpar
                 self.Textbox_Produtos.delete(0, END)
                 self.Textbox_Preco.delete(0, END)
                 self.TextBox_Descrição.delete(1.0, END)
@@ -163,15 +188,15 @@ class Funcs:
         except IndexError:
             item = self.contar_Produtos() + 1
 
+        #vai abrir uma janela para escolher uma imagem
         self.caminho_nova_imagem = filedialog.askopenfilename(initialdir="/",title="Selecione uma imagem",filetypes=(("Arquivos de Imagem", "*.png;*.jpg;*.jpeg;"), ("Todos os arquivos", "*.*")))
 
-        if self.caminho_nova_imagem and not self.caminho_nova_imagem.lower().endswith(('.png', '.jpg', '.jpeg')):
+        if self.caminho_nova_imagem and not self.caminho_nova_imagem.lower().endswith(('.png', '.jpg', '.jpeg')):#confirmar o tipo do ficheiro
             if hasattr(self, 'nome_erro'):
                 self.nome_erro.config(text='Tipo de ficheiro errado')
             else:
                 self.nome_erro = Label(self.bodyFrame4_Produtos, bg="#2E3133", text='Tipo de ficheiro errado',font=("", 8, "bold"), fg='red')
                 self.nome_erro.place(x=25, y=50)
-
         else:
             self.nova_imagem.config(text="Alterar imagem")
             nova_imagem = Image.open(self.caminho_nova_imagem).resize((250, 135))
@@ -250,7 +275,7 @@ class Funcs:
                 hora_erro = datetime.now().strftime("%H:%M:%S")
                 print(f"Ocorreu um erro ao tentar adicionar/atualizar algo na base dados - {hora_erro}")
 
-            self.logo.image = ImageTk.PhotoImage(Image.open('../Imagens/semImagem.png').resize((250, 135)))
+            self.logo.image = ImageTk.PhotoImage(Image.open('../img/semImagem.png').resize((250, 135)))
             self.nova_imagem.config(text="Adicione uma imagem")
 
             self.lista_produtos()
@@ -287,8 +312,9 @@ class Funcs:
         self.desconecta_bd()
         return [produto[0] for produto in produtos]
     def produtos_encomendas(self):
-        for widget in self.frame_checkbuttons.winfo_children():
+        for widget in self.frame_checkbuttons.winfo_children():#apaga tudo antes de fazer outra vez
             widget.destroy()
+
         # Variaveis para ajudar no ciclo
         produtos = self.buscar_produtos()
         self.check_var_list = []
@@ -305,61 +331,65 @@ class Funcs:
             self.quantidade_entries.append(quantidade_entry)
             self.check_var_list.append(check_var)
             self.frame_checkbuttons.update_idletasks()
-    def fazer_encomendas(self):#fazer a encomenda e um monte de verificações antes
-        try:
-            quantidades = self.obter_quantidades()  # array com as quantidades que estão nas entrys
-            fritos_congelados = self.obter_checkbox_status()  # verificar se é frito ou congelado
+    def fazer_encomendas(self):
+        try: #tenta fazer a encomenda
+            quantidades = self.obter_quantidades() #vai buscar as quantidades de todos os produtos
+            fritos_congelados = self.obter_checkbox_status() #vai buscar os estados das checkboxs parasaber se é frito ou não
 
-            # isto é para saber o nome do cliente que esta selcionado
             selecionado = self.clientes_lista_encomendas.selection()[0]
             values = self.clientes_lista_encomendas.item(selecionado).get('values')
-            valor_selecionado = values[0] if values else None
+            valor_selecionado = values[0] if values else None #saber qual a pessoal é que vamos fazer a encomenda
 
-            if hasattr(self, 'nome_erro_encomendas'):  # fazer a mensagem de erro caso algo aconteça
+            if hasattr(self, 'nome_erro_encomendas'):
                 self.nome_erro_encomendas.config(text="")
 
+            if not self.ver_combobox(): #ve se as duas comboboxs estao selecionadas
+                if not hasattr(self, 'nome_erro_combobox'):
+                    self.nome_erro_combobox = Label(self.frameListaClientes, bg="#2E3133",text="As duas Comboboxs têm de estar selecionadas",font=("", 8, "bold"), fg='red')
+                    self.nome_erro_combobox.place(x=500, y=5)
+                if hasattr(self, 'nome_erro_combobox'):
+                    self.nome_erro_combobox.config(text="As duas Comboboxs têm de estar selecionadas")
+                raise
+            else:
+                if hasattr(self, 'nome_erro_combobox'):
+                    self.nome_erro_combobox.config(text="")
+
         except Exception as e:
-            if not hasattr(self, 'nome_erro_encomendas'):  # mudar o texto da mensagem de erro
-                self.nome_erro_encomendas = Label(self.frameListaClientes, bg="#2E3133",
-                                                  text="Nenhum Cliente Selecionado", font=("", 8, "bold"), fg='red')
+            if not hasattr(self, 'nome_erro_encomendas'):
+                self.nome_erro_encomendas = Label(self.frameListaClientes, bg="#2E3133",text="Nenhum Cliente Selecionado", font=("", 8, "bold"), fg='red')
                 self.nome_erro_encomendas.place(x=25, y=60)
 
         self.conecta_bd()
         try:
-            resultado_encomendas = self.cursor.execute(
-                "SELECT COUNT(DISTINCT id_Encomendas) FROM Encomendas;").fetchone()
-            id_encomenda = resultado_encomendas[0] + 1  # vai buscar o numero de encomendas e adiciona 1
-            self.cursor.execute('SELECT id_clientes FROM Clientes WHERE nome_cliente = ?',
-                                (valor_selecionado,))  # usa o nome do cliente para saber o id dele
-            id_clientes = self.cursor.fetchone()[0]
+            resultado_encomendas = self.cursor.execute("SELECT COUNT(DISTINCT id_Encomendas) FROM Encomendas;").fetchone()
+            id_encomenda = resultado_encomendas[0] + 1 #adiciona 1 ao id_encomnda
+
+            self.cursor.execute('SELECT id_clientes FROM Clientes WHERE nome_cliente = ?',(valor_selecionado,))
+            id_clientes = self.cursor.fetchone()[0] #vai buscar o id_cliente a partir
 
             self.desconecta_bd()
             if id_clientes:
-                if all(qty == 0 for qty in quantidades) and all(str(qty).isdigit() for qty in quantidades):
-                    raise Exception  # se houver algum erro nas quantidades não vai adicionar encomenda e sai do try
+                if all(qty == 0 for qty in quantidades) and all(str(qty).isdigit() for qty in quantidades): #se houver algum erro nas quantidades
+                    raise Exception
 
                 self.conecta_bd()
                 data_encomenda = datetime.now().strftime("%Y-%m-%d")
-                metodo_pagamento = 0 if self.Combo_pagamento.current() == 0 else 1
-                metodo_entrega = 0 if self.Combo_levar.current() == 0 else 1
 
-                self.cursor.execute(
-                    "INSERT INTO Encomendas (`id_Encomendas`, `id_clientes`, `data_encomenda`, `metedo_pagamento`, `metedo_entrega`) VALUES (?, ?, ?, ?, ?);",
-                    (id_encomenda, id_clientes, data_encomenda, metodo_pagamento,
-                     metodo_entrega))  # cria uma encomenda para um cliente no dia em que esta a ser feito
+                metodo_pagamento = 0 if self.Combo_pagamento.current() == 0 else 1 #confirma o metedo de pagamento pela posição da combobox
+                metodo_entrega = 0 if self.Combo_levar.current() == 0 else 1 #confirma o metedo de entrega pela posição da combobox
+
+                #faz a encomenda
+                self.cursor.execute("INSERT INTO Encomendas (`id_Encomendas`, `id_clientes`, `data_encomenda`, `metedo_pagamento`, `metedo_entrega`) VALUES (?, ?, ?, ?, ?);",(id_encomenda, id_clientes, data_encomenda, metodo_pagamento,metodo_entrega))
                 self.desconecta_bd()
 
                 self.conecta_bd()
-                for i, quantidade in enumerate(
-                        quantidades):  # vai adicionar na linha de encomenda os produtos , as quantidades e se esta congelado ou frito
-                    if int(quantidade) > 0:  # para nao adicionar produtos vazios só adiciona aqueles que têm mais de 0 na quantidade
-                        self.cursor.execute(
-                            """INSERT INTO Linha_de_Encomenda (Encomendas_id_Encomendas, Produtos_id_produto, congelados, quantidade) VALUES (?, ?, ?, ?);""",
-                            (id_encomenda, i + 1, fritos_congelados[i], quantidade))
+                for i, quantidade in enumerate(quantidades): #vai adicionar a linha de encomenda para cada produto com quantidades maiior que 0
+                    if int(quantidade) > 0:
+                        self.cursor.execute("""INSERT INTO Linha_de_Encomenda (Encomendas_id_Encomendas, Produtos_id_produto, congelados, quantidade) VALUES (?, ?, ?, ?);""",(id_encomenda, i + 1, fritos_congelados[i], quantidade))
                         self.conn.commit()
                 self.desconecta_bd()
 
-                # Limpar as entrys
+                #Limpa as entrys todas
                 self.clientes_lista_encomendas.selection_remove(self.clientes_lista_encomendas.selection())
                 if hasattr(self, 'nome_erro_encomendas'):
                     self.nome_erro_encomendas.config(text='')
@@ -378,18 +408,17 @@ class Funcs:
             hora_erro = datetime.now().strftime("%H:%M:%S")
             print(f"Ocorreu um erro ao tentar adicionar/atualizar algo na base dados - {hora_erro}")
 
-        # widgets que vao ser atualizados
-        self.N_encomendasFrame4_Inicio.config(text=int(self.contar_Encomendas()))  # Numero de encomendas
-        self.lista_clientes_encomendas()  # Numero de Encomendas por Clientes
-        self.grafico()  # Grafico do Lucro
-        self.mostrar_encomendas() #tabela das encomendaas
-        for var in self.check_var_list:#reset ás entrys
+        self.N_encomendasFrame4_Inicio.config(text=int(self.contar_Encomendas()))
+        self.lista_clientes_encomendas()
+        self.grafico()
+        self.mostrar_encomendas()
+        for var in self.check_var_list:
             var.set(0)
         for entry in self.quantidade_entries:
             entry.delete(0, 'end')
             entry.insert(0, "0")
-
-            # Talvez adicionar mais!!!!!
+    def ver_combobox(self): #vai ver se as combobox estão selecionadas
+        return True if self.Combo_pagamento.get() and self.Combo_levar.get() else False
     def obter_checkbox_status(self):#verifica as checkboxes que estao selecionadas e ver se são fritos ou congelados
         return [1 if check_var.get() == 1 else 0 for check_var in self.check_var_list]
     def obter_quantidades(self):#serve para saber os valores que estavam nas entrys e saber as quantidades (em duzias de cada produto)
@@ -421,52 +450,48 @@ class Funcs:
             self.nome_erro_produtos.config(text='')
         return quantidades
     def mostrar_encomendas(self):
-        for widget in self.frame_encomendas.winfo_children():
+        for widget in self.frame_encomendas.winfo_children():#apaga tudo antes de fazer outra vez
             widget.destroy()
         self.conecta_bd()
 
-        #Vai buscar o ID, Cliente e Data de todas as encomendas
-        dados_encomendas = self.cursor.execute("SELECT Encomendas.id_Encomendas AS 'ID Encomenda', Clientes.nome_cliente AS 'Nome do Cliente', Encomendas.data_encomenda AS 'Data', CASE WHEN Encomendas.metedo_pagamento = 0 THEN 'Pagamento em Mãos' ELSE 'MBway' END AS 'Método de Pagamento', CASE WHEN Encomendas.metedo_entrega = 0 THEN 'Pickup' ELSE 'Entrega ao domicílio' END AS 'Método de Entrega' FROM Encomendas JOIN Clientes ON Encomendas.id_clientes = Clientes.id_clientes ORDER BY Encomendas.id_Encomendas DESC;").fetchall()
+        # Vai buscar o ID, Cliente e Data de todas as encomendas
+        dados_encomendas = self.cursor.execute("SELECT Encomendas.id_Encomendas AS 'ID Encomenda', Clientes.nome_cliente AS 'Nome do Cliente', Encomendas.data_encomenda AS 'Data', CASE WHEN Encomendas.metedo_pagamento = 0 THEN 'Pagamento em Mãos' ELSE 'MBway' END AS 'Método de Pagamento', CASE WHEN Encomendas.metedo_entrega = 0 THEN 'Pickup' ELSE 'Entrega ao domicílio' END AS 'Método de Entrega', Encomendas.mensagem FROM Encomendas JOIN Clientes ON Encomendas.id_clientes = Clientes.id_clientes ORDER BY Encomendas.id_Encomendas DESC;").fetchall()
         self.desconecta_bd()
 
-        #Para cada encomenda vai adicionar as informações todas (produtos,quantidades e estado)
+        # Para cada encomenda vai adicionar as informações todas (produtos,quantidades e estado)
         for linha_encomenda, info_encomenda in enumerate(dados_encomendas):
-            id_encomenda, nome_cliente, data_encomenda, metodo_pagamento, metodo_entrega = info_encomenda
-            produtos_quantidades = []  #tupula para depois por os produtos, quantidades e estado
-            total_encomenda = 0  #variavel para o preço total de cada encomenda
+            id_encomenda, nome_cliente, data_encomenda, metodo_pagamento, metodo_entrega, mensagem = info_encomenda
+            produtos_quantidades = []  # tupula para depois por os produtos, quantidades e estado
+            total_encomenda = 0  # variavel para o preço total de cada encomenda
 
             self.conecta_bd()
-            #Vai buscar os produtos de cada encomenda
+            # Vai buscar os produtos de cada encomenda
             dados_produtos = self.cursor.execute("SELECT Produtos.nome_produto, Linha_de_Encomenda.quantidade, CASE WHEN Produtos.nome_produto LIKE '%Rissol%' OR Produtos.nome_produto LIKE '%Rissois%' OR Produtos.nome_produto LIKE '%Croquete%' OR Produtos.nome_produto LIKE '%Trouxa%' THEN Linha_de_Encomenda.congelados ELSE '' END AS congelados, Produtos.preco FROM Linha_de_Encomenda JOIN Produtos ON Linha_de_Encomenda.Produtos_id_produto = Produtos.id_produto WHERE Linha_de_Encomenda.Encomendas_id_Encomendas = ?;",(id_encomenda,)).fetchall()
             self.desconecta_bd()
 
-            #Calcula o preço total da encomenda e preenche a tupula com os dados corretos
+            # Calcula o preço total da encomenda e preenche a tupula com os dados corretos
             for produtos in dados_produtos:  # isto vai repetir por cada produto que existe
                 produto, quantidade, congelados, preco = produtos
                 produtos_quantidades.append((produto, quantidade, congelados))
                 total_encomenda += quantidade * preco
 
-            #Junta tudo numa string
-            encomenda_info = "Encomenda: {}\nCliente: {}\nData: {}\nMétodo de Pagamento: {}\nMétodo de Entrega: {}\nProdutos:\n".format(
-                id_encomenda, nome_cliente, data_encomenda,
-                "Pagamento em Mãos" if metodo_pagamento == 'Pagamento em Mãos' else 'MBway',
-                "Pickup" if metodo_entrega == 'Pickup' else 'Entrega ao domicílio')
+            # Junta tudo numa string
+            encomenda_info = "Encomenda: {}\nCliente: {}\nData: {}\nMétodo de Pagamento: {}\nMétodo de Entrega: {}\nMensagem: {}\nProdutos:\n".format(id_encomenda, nome_cliente, data_encomenda,"Pagamento em Mãos" if metodo_pagamento == 'Pagamento em Mãos' else 'MBway',"Pickup" if metodo_entrega == 'Pickup' else 'Entrega ao domicílio',"[Nada]" if mensagem == None else mensagem)
 
-            for produto, quantidade, congelados, preco in dados_produtos:  #vai adicionar à encomenda_info a informação de cada produto
+            for produto, quantidade, congelados, preco in dados_produtos:  # vai adicionar à encomenda_info a informação de cada produto
                 tipo_congelamento = "Congelado" if congelados == 0 else "Fritos"
                 congelados_str = "" if congelados == "" else ", " + tipo_congelamento
                 unidade_medida = "duzias" if any(keyword in produto for keyword in ["Rissol", "Rissois", "Croquete", "Trouxa"]) else "unidades"
                 encomenda_info += "- {} ({} {}{} , Preço: {:.2f}€)\n".format(produto, quantidade, unidade_medida,congelados_str, preco)
             encomenda_info += "Total da Encomenda: {:.2f}€".format(total_encomenda)
 
-            #Junta tudo e mete numa label
+            # Junta tudo e mete numa label
             Encomenda = Label(self.frame_encomendas, text=encomenda_info, font=("", 12), fg='white', bg='#2E3133',justify='left', )
             Encomenda.grid(row=linha_encomenda, column=0, padx=5, pady=5, sticky='w', columnspan=3)
 
-        #Atualizar a frame
+        # Atualizar a frame
         self.canvas_encomendas.update_idletasks()
         self.canvas_encomendas.config(scrollregion=self.canvas_encomendas.bbox("all"))
-
     #funções para o Lucro
     def AnosServico(self): #mostra umaa combobox com todos os anos onde houve encomendas
         self.conecta_bd()
@@ -558,7 +583,7 @@ class Funcs:
             selecionado = self.lista_lucro.selection()
             mes = self.lista_lucro.item(selecionado[0], "values")[0] #saber o nome do mes que esta selecionado
             nomes_meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro','Outubro', 'Novembro','Dezembro']  # variavel com os meses para passar o numero do mes para o nome respetivo dele
-            num_mes = str(nomes_meses.index(mes) + 1).zfill(2) #vai usar o array para passar para numeros e garantir que vai ter dois digitos
+            self.num_mes = str(nomes_meses.index(mes) + 1).zfill(2) #vai usar o array para passar para numeros e garantir que vai ter dois digitos
 
             if not hasattr(self, 'stats_frame_mes'):  # Frame onde vai estar tudo
                 self.stats_frame_mes =Frame(self.frameLucro_stats, bg="#2E3133", bd=1, highlightbackground="white",highlightthickness=1)
@@ -584,7 +609,7 @@ class Funcs:
             self.lista_melhores_clientes_mes.column("#1", width=73, stretch=NO)
             self.lista_melhores_clientes_mes.column("#2", width=110, stretch=NO)
             self.lista_melhores_clientes_mes.place(relx=0.03, rely=0.25, relwidth=0.27, relheight=0.70)
-            self.melhores_clientes_mes(ano,num_mes)
+            self.melhores_clientes_mes(ano,self.num_mes)
 
             # Scrollbar
             self.sroll = Scrollbar(self.lista_melhores_clientes_mes, orient="vertical")
@@ -605,7 +630,7 @@ class Funcs:
             self.lista_melhores_prod_mes.column("#1", width=80, stretch=NO)
             self.lista_melhores_prod_mes.column("#2", width=124, stretch=NO)
             self.lista_melhores_prod_mes.place(relx=0.329, rely=0.25, relwidth=0.3, relheight=0.70)
-            self.melhores_prod_mes(ano,num_mes)
+            self.melhores_prod_mes(ano,self.num_mes)
 
             # Scrollbar
             self.sroll = Scrollbar(self.lista_melhores_prod_mes, orient="vertical")
@@ -624,10 +649,9 @@ class Funcs:
             self.lista_total_faturado_mes.column("#0", width=1, stretch=NO)
             self.lista_total_faturado_mes.column("#1", width=204, stretch=NO, anchor='center')
             self.lista_total_faturado_mes.place(relx=0.66, rely=0.25, relwidth=0.3, relheight=0.70)
-            self.lucro_total_mes(ano,num_mes)
+            self.lucro_total_mes(ano,self.num_mes)
         except:
             print("Ano ou mês ainda não selecionado")
-
     ##Estas 3 funções são para mostrar as estatisticas e lucro do ano que foi escolhido
     def melhores_clientes_ano(self, ano):#função que mostra as pessoas que fizeram mais encomendas num certo ano
         self.lista_melhores_clientes_ano.delete(*self.lista_melhores_clientes_ano.get_children())
@@ -686,7 +710,35 @@ class Funcs:
         self.lista_total_faturado_mes.update()
         self.desconecta_bd()
         #mudar as treeviews disto tudo para as certas
+    #funções para as mensagens
+    def mostrar_mensagens(self):
+        for widget in self.frame_mensagens.winfo_children(): #apaga tudo antes de fazer outra vez
+            widget.destroy()
+        self.conecta_bd()
 
+        # Vai buscar todas as mensagens dos clientes
+        dados_mensagens = self.cursor.execute("SELECT Mensagens_Clientes.id_mensagem, Clientes.nome_cliente, Mensagens_Clientes.mensagem, Clientes.imagem_perfil FROM Mensagens_Clientes JOIN Clientes ON Mensagens_Clientes.id_cliente = Clientes.id_clientes;").fetchall()
+        self.desconecta_bd()
+
+        #Vai buscar as informações da mensgame e do cliente
+        for linha_mensagem, info_mensagem in enumerate(dados_mensagens):
+            id_mensagem, nome_cliente, mensagem, imagem_perfil = info_mensagem
+
+            #Procura imagem de perfil se tiver
+            if imagem_perfil:
+                imagem = PhotoImage(file=imagem_perfil).subsample(10)  # Substitua 4 pelo fator de redução desejado
+                pfp_imagem = Label(self.frame_mensagens, image=imagem, bg='#2E3133')
+                pfp_imagem.image = imagem
+                pfp_imagem.grid(row=linha_mensagem, column=0, padx=5, pady=5, sticky='e')
+
+            #Mete tudo numa string e depois numa label
+            mensagem_info = "Mensagem Nº: {}\nCliente: {} \nMensagem: {}" .format(id_mensagem, nome_cliente,mensagem)
+            label_mensagem = Label(self.frame_mensagens, text=mensagem_info, font=("", 12), fg='white', bg='#2E3133',justify='left')
+            label_mensagem.grid(row=linha_mensagem, column=1, padx=5, pady=5, sticky='w')
+
+        # Atualiza a frame
+        self.frame_mensagens.update_idletasks()
+        self.canvas_mensagens.config(scrollregion=self.canvas_mensagens.bbox("all"))
 class Dashboard(Funcs):
     def __init__(self, window):
         # janela principal
@@ -753,9 +805,16 @@ class Dashboard(Funcs):
         self.settings_text = Button(self.sidebar, text='Lucro', bg='#2E3133', font=("", 12, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=10,command=lambda: self.frameLucro.lift())
         self.settings_text.place(x=30, y=425)
 
-        ## Btn Sair
-        self.exit_text = Button(self.sidebar, text='Sair', bg='#2E3133', font=("", 12, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=10, command=self.window.quit)
+        ## Btn Mensagens
+        self.exit_text = Button(self.sidebar, text='Mensagens', bg='#2E3133', font=("", 12, "bold"), fg='white',cursor='hand2', activebackground='#FD9C3A', bd=5, width=10,command=lambda: self.frameMensagens.lift())
         self.exit_text.place(x=160, y=425)
+
+        ##Btn para dar refresh para quando se muda algo no site
+        RefreshImagem = ImageTk.PhotoImage(Image.open('../img/refresh.png'))
+        self.prety_icon_refresh = Label(self.sidebar, image=RefreshImagem, bg='#2E3133')
+        self.prety_icon_refresh.image = RefreshImagem
+        self.prety_icon_refresh.place(x=270, y=15)
+        self.prety_icon_refresh.bind("<Button-1>", lambda event: self.refresh())
 
         ##############################################################################################################################################
         ##################################################### FRAME Inicio ##########################################################################
@@ -812,7 +871,6 @@ class Dashboard(Funcs):
         self.bodyFrame3_Inicio = Frame(self.frameInicio, bg="#2E3133", cursor='hand2')
         self.bodyFrame3_Inicio.place(x=380, y=475, width=310, height=220)
         self.bodyFrame3_Inicio.bind("<Button-1>", lambda event: self.frameProdutos.lift())
-
 
         ### Label a dizer Produtos
         self.labelFrame3_Inicio = Label(self.bodyFrame3_Inicio, bg="#2E3133", text="Produtos", font=("", 15, "bold"), fg='white')
@@ -1009,7 +1067,6 @@ class Dashboard(Funcs):
             hora_erro = datetime.now().strftime("%H:%M:%S")
             print(f"Erro: Imagem não Encontrada - {hora_erro}")
 
-
         ##############################################################################################################################################
         ##################################################### FRAME Clientes #########################################################################
         ##############################################################################################################################################
@@ -1030,7 +1087,6 @@ class Dashboard(Funcs):
         self.prety_icon_aviso_Clientes.image = AvisoImagem
         self.prety_icon_aviso_Clientes.place(x=100, y=45)
         self.prety_icon_aviso_Clientes.bind("<Button-1>",lambda event: messagebox.showinfo("Aviso!", "Esta é a pagina dos Clientes, aqui podes ver os dados dos clientes e uma lista de quais são os melhores compradores."))
-
 
         ## Frame 1 da listagem dos Clientes
         self.bodyFrame1_Clientes = Frame(self.frameClientes, bg="#2E3133")
@@ -1150,16 +1206,16 @@ class Dashboard(Funcs):
         self.LabelFazer_Encomenda = Label(self.frameListaClientes, bg="#2E3133", text="Metedo de Pagamento", font=("", 12, "bold"),fg='white')
         self.LabelFazer_Encomenda.place(x=420, y=25)
 
-        ### Combobox para o metedo de pagamento 0=Em mãos, 1=Mbway
+        ### Combobox para o método de pagamento 0=Em mãos, 1=Mbway
         self.Combo_pagamento = ttk.Combobox(self.frameListaClientes, state="readonly", background="#2E3133",foreground='#FD9C3A', font=("", 10, "bold"), width=26,values=['Pagamento em Mãos', 'MBway'])
         self.Combo_pagamento.place(x=420, y=50)
 
-        ### Label a dizer Metedo de Entrega
-        self.LabelFazer_Encomenda = Label(self.frameListaClientes, bg="#2E3133", text="Metedo de Entrega", font=("", 12, "bold"),fg='white')
+        ### Label a dizer Método de Entrega
+        self.LabelFazer_Encomenda = Label(self.frameListaClientes, bg="#2E3133", text="Método de Entrega",font=("", 12, "bold"), fg='white')
         self.LabelFazer_Encomenda.place(x=640, y=25)
 
-        ### Combobox para o metedo de levantamento 0=Pickup , 1=Entrega ao domicilio
-        self.Combo_levar = ttk.Combobox(self.frameListaClientes, state="readonly", background="#2E3133",foreground='#FD9C3A', font=("", 10, "bold"), width=26,values=['Pickup', 'Entrega ao Domicilio'])
+        ### Combobox para o método de levantamento 0=Pickup , 1=Entrega ao domicilio
+        self.Combo_levar = ttk.Combobox(self.frameListaClientes, state="readonly", background="#2E3133",foreground='#FD9C3A', font=("", 10, "bold"), width=26,values=['Pickup', 'Entrega ao Domicílio'])
         self.Combo_levar.place(x=640, y=50)
 
         ### Label a dizer fazer encomendas
@@ -1288,13 +1344,56 @@ class Dashboard(Funcs):
         self.sroll.configure(command=self.lista_lucro.yview)
         self.sroll.place(relx=0.87, rely=0.05, relwidth=0.13, relheight=0.95)
         self.lista_lucro.configure(yscroll=self.sroll.set)
-        self.Lucro_ano()
 
         ### Combo box com o ano
         self.Combo_ano = ttk.Combobox(self.frameLucro_stats, state="readonly", background="#2E3133",foreground='#FD9C3A', font=("", 10, "bold"),width=26)
         self.Combo_ano.place(x=41, y=70)
         self.AnosServico()
         self.Combo_ano.bind("<<ComboboxSelected>>", lambda event: self.Lucro_ano())
+
+        ##############################################################################################################################################
+        ##################################################### Frame Mensagens ########################################################################
+        ##############################################################################################################################################
+
+        #Frame das Mensagens
+        self.frameMensagens = Frame(self.window, bg="#17191F")
+        self.frameMensagens.place(x=300, y=0, width=1366, height=768)
+
+        ## Frame que vai ter as Mensagens todas
+        self.frameAll_Mensagens = Frame(self.frameMensagens, bg="#2E3133")
+        self.frameAll_Mensagens.place(x=28, y=90, width=1012, height=650)
+
+        ## Label Mensagens
+        self.heading_Mensagens = Label(self.frameMensagens, text="Mensagens", font=("", 13, "bold"), fg='white',bg='#17191F')
+        self.heading_Mensagens.place(x=25, y=50)
+
+        ## Linha
+        self.line_Mensagens = Label(self.frameMensagens, text="____________", font=("", 10, "bold"), fg='#FD9C3A',bg='#17191F')
+        self.line_Mensagens.place(x=25, y=25)
+
+        ## Aviso de Como funciona a encomenda
+        self.prety_icon_aviso_Mensagens = Label(self.frameMensagens, image=AvisoImagem, bg='#17191F')
+        self.prety_icon_aviso_Mensagens.image = AvisoImagem
+        self.prety_icon_aviso_Mensagens.place(x=125, y=45)
+        self.prety_icon_aviso_Mensagens.bind("<Button-1>", lambda event: messagebox.showinfo("Aviso!","Esta é a pagina das Mensagens, aqui podes ver as mensagens que os teus clientes deixaram no site."))
+
+        ## Frame que vai ter as mensagen
+        self.ver_mensagens = Frame(self.frameAll_Mensagens, bg="#2E3133")
+        self.ver_mensagens.place(x=50, y=50, width=900, height=623)
+
+        ### Criação de Frames e Canvas para dar scroll
+        self.canvas_mensagens = Canvas(self.ver_mensagens, bg="#2E3133")
+        self.canvas_mensagens.place(relx=0, rely=0, relwidth=1, relheight=1)
+        self.frame_mensagens = Frame(self.canvas_mensagens, bg='#2E3133')
+        self.frame_mensagens.place(relx=0.1, rely=0.2, relwidth=0.95, relheight=0.50)
+
+        ### Scroll bar
+        self.canvas_mensagens.create_window((0, 0), window=self.frame_mensagens, anchor="nw")
+        self.canvas_mensagens.config(scrollregion=self.canvas_mensagens.bbox("all"))
+        self.scroll_canvas_mensagens = Scrollbar(self.ver_mensagens, orient="vertical",command=self.canvas_mensagens.yview)
+        self.scroll_canvas_mensagens.place(relx=0.95, rely=0, relwidth=0.05, relheight=1)
+        self.scroll_canvas_mensagens.config(command=self.canvas_mensagens.yview)
+        self.mostrar_mensagens()
 
         #Puxar a janela do inicio para cima quando o programa abrir
         self.frameInicio.lift()
